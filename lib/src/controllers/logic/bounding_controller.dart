@@ -27,7 +27,6 @@ class BoundingController extends ChangeNotifier {
 
   Future<void> sendBBoxOBB(OrientedBBox obb, Size viewSize, int frameWidth, int frameHeight) async {
     final mapper = FitCoverMapper(viewSize, frameWidth, frameHeight);
-    print(viewSize);
 
     // centro y tamaños en coordenadas de FRAME
     final centerF = mapper.pViewToFrame(obb.center);

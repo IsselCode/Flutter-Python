@@ -1,5 +1,5 @@
 abstract class Endpoint {
-  static const String base = "http://127.0.0.1:5000";
+  static const String base = "http://192.168.100.11:5000";
 }
 
 class CameraAPI extends Endpoint {

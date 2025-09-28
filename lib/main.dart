@@ -6,27 +6,30 @@ import 'package:flutter_python_prueba/src/model/camera_model.dart';
 import 'package:flutter_python_prueba/src/views/home_view.dart';
 import 'package:provider/provider.dart';
 import 'package:snap_layouts/snap_layouts.dart';
+import 'dart:io' show Platform;
 import 'package:window_manager/window_manager.dart';
-
 import 'core/http/endpoints.dart';
 
+/// flutter_bbox_editor
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await windowManager.ensureInitialized();
+  if (Platform.isWindows) {
+    await windowManager.ensureInitialized();
 
-  WindowOptions windowOptions = WindowOptions(
-    size: Size(1366, 768),
-    minimumSize: Size(1366, 768),
-    center: true,
-    backgroundColor: Colors.transparent,
-    skipTaskbar: false,
-    titleBarStyle: TitleBarStyle.hidden,
-  );
-  windowManager.waitUntilReadyToShow(windowOptions, () async {
-    await windowManager.show();
-    await windowManager.focus();
-  });
+    const windowOptions = WindowOptions(
+      fullScreen: false,
+      center: true,
+      backgroundColor: Colors.transparent,
+      skipTaskbar: false,
+      titleBarStyle: TitleBarStyle.hidden,
+    );
+
+    await windowManager.waitUntilReadyToShow(windowOptions, () async {
+      await windowManager.show();
+      await windowManager.focus();
+    });
+  }
 
   runApp(const MyApp());
 }
@@ -62,11 +65,7 @@ class MyApp extends StatelessWidget {
             ],
           );
         },
-        home: CamBBoxRotateView(
-          base: Endpoint.base,
-          frameW: 1920,
-          frameH: 1080,
-        ),
+        home: HomeView(),
       ),
     );
   }
