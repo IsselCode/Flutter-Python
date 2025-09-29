@@ -1,37 +1,15 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import '../clean_features/entities/oriented_box_entity.dart';
+import 'package:flutter_python_prueba/src/widgets/bbox_editor/bbox_editor_controller.dart';
+import '../../../core/utils/fit_cover_mapper.dart';
+import '../../clean_features/entities/oriented_box_entity.dart';
+import 'bbox_editor_enums.dart';
 
-enum Mode { idle, draw, drag, rotate, resize }
-enum Handle { none, tl, t, tr, r, br, b, bl, l }
-enum CommitKind { create, update, delete }
-
-class MultiBBoxOverlayController {
-  VoidCallback? _clearAll;
-  void Function(int id)? _remove;
-  void Function(OrientedBBox box)? _add;
-  void Function(List<OrientedBBox> boxes)? _setAll;
-
-  void _attach({
-    required VoidCallback clearAll,
-    required void Function(int) remove,
-    required void Function(OrientedBBox) add,
-    required void Function(List<OrientedBBox>) setAll,
-  }) {
-    _clearAll = clearAll; _remove = remove; _add = add; _setAll = setAll;
-  }
-  void _detach() { _clearAll = null; _remove = null; _add = null; _setAll = null; }
-
-  void clearAll() => _clearAll?.call();
-  void remove(int id) => _remove?.call(id);
-  void add(OrientedBBox box) => _add?.call(box);
-  void setAll(List<OrientedBBox> boxes) => _setAll?.call(boxes);
-}
-
-class MultiBBoxOverlay extends StatefulWidget {
-  const MultiBBoxOverlay({
+class BBoxOverlay extends StatefulWidget {
+  const BBoxOverlay({
     super.key,
     required this.viewSize,                         // tamaño del área del video (VISTA)
+    required this.camResolution,
     this.onCommitBox, // (box, kind)
     this.onCommitBoxes,                    // se llama al soltar gesto
     this.controller,
@@ -41,21 +19,25 @@ class MultiBBoxOverlay extends StatefulWidget {
   });
 
   final Size viewSize;
+  final Size camResolution;
   final List<OrientedBBox> initialBoxes;
   final double minW, minH;
-  final MultiBBoxOverlayController? controller;
+  final BBoxEditorController? controller;
   final Future<void> Function(OrientedBBox box, CommitKind kind)? onCommitBox;
   final Future<void> Function(List<OrientedBBox> boxes)? onCommitBoxes;
 
   @override
-  State<MultiBBoxOverlay> createState() => _MultiBBoxOverlayState();
+  State<BBoxOverlay> createState() => _BBoxOverlayState();
 }
 
-class _MultiBBoxOverlayState extends State<MultiBBoxOverlay> {
+class _BBoxOverlayState extends State<BBoxOverlay> {
   final List<OrientedBBox> _boxes = [];
   int? _selected;                  // id seleccionado
   Mode _mode = Mode.idle;
   Handle _activeHandle = Handle.none;
+  static const double _minDragDistance = 6.0;
+  Offset? _gestureStart;     // punto donde inició el gesto
+  bool _movedEnough = false; // si ya superó el umbral
 
   // edición
   OrientedBBox? _live;             // copia mientras editas
@@ -72,7 +54,7 @@ class _MultiBBoxOverlayState extends State<MultiBBoxOverlay> {
     _boxes.addAll(widget.initialBoxes.map((b) => OrientedBBox(
       id: b.id, center: b.center, w: b.w, h: b.h, angle: b.angle, color: b.color,
     )));
-    widget.controller?._attach(
+    widget.controller?.attachOverlay(
       clearAll: _clearAll,
       remove: _removeById,
       add: _addBox,
@@ -85,11 +67,11 @@ class _MultiBBoxOverlayState extends State<MultiBBoxOverlay> {
   }
 
   @override
-  void didUpdateWidget(covariant MultiBBoxOverlay oldWidget) {
+  void didUpdateWidget(covariant BBoxOverlay oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.controller != widget.controller) {
-      oldWidget.controller?._detach();
-      widget.controller?._attach(
+      oldWidget.controller?.detachOverlay();
+      widget.controller?.attachOverlay(
         clearAll: _clearAll,
         remove: _removeById,
         add: _addBox,
@@ -104,7 +86,7 @@ class _MultiBBoxOverlayState extends State<MultiBBoxOverlay> {
 
   @override
   void dispose() {
-    widget.controller?._detach();
+    widget.controller?.detachOverlay();
     super.dispose();
   }
 
@@ -257,21 +239,28 @@ class _MultiBBoxOverlayState extends State<MultiBBoxOverlay> {
   }
 
   Future<void> _endEdit({required bool commit}) async {
-    final live = _live;
+    OrientedBBox? live = _live;
+
     if (commit && live != null) {
       final idx = _boxes.indexWhere((b)=>b.id==live.id);
       final isCreate = idx == -1;
 
+      final mapper = FitCoverMapper(widget.viewSize, widget.camResolution);
+      live.setFrameCoords(mapper);
+
       if (isCreate) {
-        _boxes.add(live);
-        _selected = live.id;
-        // 🔸 delta
+        // ← NUEVO: evitar crear si solo fue clic (sin arrastre)
+        final clickedOnly = (live.w <= 5.0 && live.h <= 5.0);
+        if (clickedOnly) {
+          setState(() { _cancelEdit(); });
+          return;
+        }
+
         if (widget.onCommitBox != null) {
           await widget.onCommitBox!(live, CommitKind.create);
         }
       } else {
         _boxes[idx] = live;
-        // 🔸 delta
         if (widget.onCommitBox != null) {
           await widget.onCommitBox!(live, CommitKind.update);
         }
@@ -369,9 +358,6 @@ class _MultiBBoxOverlayState extends State<MultiBBoxOverlay> {
       color: cur.color,
     );
   }
-
-
-
 
   // --------- HELPERS
 
@@ -490,7 +476,7 @@ class _MultiPainter extends CustomPainter {
         final hs = b.handlePositions();
         final ph = Paint()..color = Colors.white..style = PaintingStyle.fill;
         for (final p in hs.values) {
-          canvas.drawRect(Rect.fromCenter(center: p, width: 12, height: 12), ph);
+          canvas.drawRect(Rect.fromCenter(center: p, width: 8, height: 8), ph);
         }
       }
 

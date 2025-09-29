@@ -3,13 +3,14 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter_python_prueba/core/utils/fit_cover_mapper.dart';
 import 'package:flutter_python_prueba/src/clean_features/dtos/create_bounding_box_dto.dart';
 import 'package:http/http.dart' as http;
 
 import '../../core/http/endpoints.dart';
 import '../clean_features/dtos/update_bounding_box_dto.dart';
 import '../clean_features/entities/oriented_box_entity.dart';
-import '../widgets/overlay_bbox_widget.dart';
+import '../widgets/bbox_editor/bbox_overlay.dart';
 
 class BoundingModel {
 
@@ -49,7 +50,6 @@ class BoundingModel {
           if (map['ok'] != true) {
             throw HttpException('El servidor respondió ok=false: ${res.body}', uri: uri);
           }
-          print(map);
         }
         return;
       }
@@ -85,7 +85,6 @@ class BoundingModel {
           if (map['ok'] != true) {
             throw HttpException('El servidor respondió ok=false: ${res.body}', uri: uri);
           }
-          print(map);
         }
         return;
       }
@@ -105,20 +104,15 @@ class BoundingModel {
   }
 
   /// Lee boxes del backend y los convierte a OrientedBBox en VISTA.
-  /// `pFrameToView` y `lenFrameToView` vienen de tu _FitCoverMapper.
   Future<List<OrientedBBox>> getBboxes({
-    String source = 'db', // 'db' | 'worker' | 'both'
-    required PointMap pFrameToView,
-    required LenMap lenFrameToView,
+    required FitCoverMapper mapper,
   }) async {
 
-    final uri = Uri.parse(BboxAPI.bboxes).replace(queryParameters: {'source': source});
+    final uri = Uri.parse(BboxAPI.bboxes);
 
     http.Response res;
     try {
-      res = await http
-          .get(uri, headers: {HttpHeaders.contentTypeHeader: 'application/json'})
-          .timeout(const Duration(seconds: 5));
+      res = await http.get(uri, headers: {HttpHeaders.contentTypeHeader: 'application/json'}).timeout(const Duration(seconds: 5));
     } on TimeoutException {
       throw TimeoutException('GET $uri tardó demasiado');
     } on SocketException catch (e) {
@@ -134,23 +128,10 @@ class BoundingModel {
       throw HttpException('ok=false: ${res.body}', uri: uri);
     }
 
-    // Selección de lista según `source`
-    List<dynamic> raw;
-    if (source == 'both') {
-      // por defecto devolvemos los de DB; si quieres, aquí puedes fusionar con worker_items
-      raw = (map['db_items'] as List?) ?? const [];
-    } else {
-      raw = (map['items'] as List?) ?? const [];
-    }
+    // Selección de lista
+    List<dynamic> raw = (map['items'] as List?) ?? const [];
 
-    return raw
-        .cast<Map<String, dynamic>>()
-        .map((j) => OrientedBBox.fromServerJson(
-      j,
-      pFrameToView: pFrameToView,
-      lenFrameToView: lenFrameToView,
-    ))
-        .toList(growable: false);
+    return raw.map((e) => OrientedBBox.fromServerJson(e, mapper: mapper),).toList();
   }
 
 }

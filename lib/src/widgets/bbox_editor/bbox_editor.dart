@@ -1,0 +1,140 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_python_prueba/src/controllers/logic/bounding_controller.dart';
+import 'package:flutter_python_prueba/src/widgets/bbox_editor/bbox_editor_controller.dart';
+import 'package:provider/provider.dart';
+import 'package:mjpeg_stream/mjpeg_stream.dart';
+
+import '../../../core/utils/fit_cover_mapper.dart';
+import '../../clean_features/entities/oriented_box_entity.dart';
+import '../../controllers/logic/camera_controller.dart';
+import 'bbox_overlay.dart';
+import 'bbox_editor_enums.dart';
+
+class BBoxEditor extends StatefulWidget {
+  final String stream;
+  final Size camResolution;
+  final BBoxEditorController? controller;
+  final Future<List<OrientedBBox>> Function(FitCoverMapper mapper)? onStreamReadyFutureBoundings;
+  final Future<void> Function(OrientedBBox box, CommitKind kind, )? onCommitBox;
+
+  final VoidCallback? onStreamError;
+  final VoidCallback? onStreamReady;
+  final VoidCallback? onRetry;
+
+  const BBoxEditor({
+    super.key,
+    required this.stream,
+    required this.camResolution,
+    this.controller,
+    this.onRetry,
+    this.onStreamError,
+    this.onStreamReady,
+    this.onStreamReadyFutureBoundings,
+    this.onCommitBox,
+  });
+
+  @override
+  State<BBoxEditor> createState() => _BBoxEditorState();
+}
+
+class _BBoxEditorState extends State<BBoxEditor> {
+  bool cameraStreamError = false;
+  bool _loadingInitial = false;
+  BBoxEditorController get _ctrl => widget.controller ?? (throw ArgumentError('controller es requerido'));
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl.cameraResolution = widget.camResolution;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AspectRatio(
+      aspectRatio: 16 / 9,
+      child: LayoutBuilder(
+        builder: (context, c) {
+          final viewSize = Size(c.maxWidth, c.maxHeight);
+          _ctrl.viewSize = viewSize;
+
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              // VIDEO
+              MJPEGStreamScreen(
+                streamUrl: widget.stream,
+                borderRadius: 0,
+                watermarkText: "Issel Code",
+                width: viewSize.width,
+                height: viewSize.height,
+                showLiveIcon: false,
+                showLogs: false,
+                blurSensitiveContent: false,
+                showWatermark: true,
+                onRetry: () => widget.onRetry?.call(),
+                onError: () {
+                  cameraStreamError = true;
+                  setState(() {});
+                  widget.onStreamError?.call();
+                },
+                onStartCamera: () async {
+                  cameraStreamError = false;
+                  setState(() {});
+                  widget.onStreamReady?.call();
+
+                  // Disparamos la carga de boundings si el padre nos dio el callback
+                  if (widget.onStreamReadyFutureBoundings != null) {
+                    setState(() => _loadingInitial = true);
+                    try {
+                      final list = await widget.onStreamReadyFutureBoundings!(_ctrl.mapper);
+                      _ctrl.setInitialBoxes(list);
+                    } finally {
+                      if (mounted) setState(() => _loadingInitial = false);
+                    }
+                  }
+                },
+              ),
+
+              // OVERLAY
+              if (!cameraStreamError)
+                ValueListenableBuilder<List<OrientedBBox>>(
+                  valueListenable: _ctrl.boxes,
+                  builder: (context, boxes, _) {
+                    if (_loadingInitial) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    return BBoxOverlay(
+                      viewSize: viewSize,
+                      camResolution: widget.camResolution,
+                      // Usa el mismo controller que ya tienes para editar en memoria
+                      controller: widget.controller,
+                      initialBoxes: boxes,
+                      onCommitBox: (box, kind) async {
+                        // delega al padre con el mapper listo
+                        if (widget.onCommitBox != null) {
+                          await widget.onCommitBox!(box, kind);
+                        }
+                        // Actualiza el estado local después de persistir
+                        switch (kind) {
+                          case CommitKind.create:
+                            _ctrl.addBox(box);
+                            break;
+                          case CommitKind.update:
+                            _ctrl.updateBox(box);
+                            break;
+                          case CommitKind.delete:
+                            _ctrl.removeBox(box.id);
+                            break;
+                        }
+                      },
+                    );
+                  },
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+

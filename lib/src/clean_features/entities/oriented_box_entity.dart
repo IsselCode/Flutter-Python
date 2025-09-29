@@ -1,7 +1,10 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
-import '../../widgets/overlay_bbox_widget.dart';
+import 'package:flutter_python_prueba/core/utils/fit_cover_mapper.dart';
+
+import '../../widgets/bbox_editor/bbox_editor_enums.dart';
+import '../../widgets/bbox_editor/bbox_overlay.dart';
 
 typedef PointMap = Offset Function(Offset);
 typedef LenMap = double Function(double);
@@ -11,6 +14,12 @@ class OrientedBBox {
   Offset center;  // en VISTA
   double w, h;    // en VISTA
   double angle;   // radianes (VISTA)
+
+  late Offset centerF;
+  late double wF;
+  late double hF;
+  late double angleDegScreen;
+
   Color color;
 
   OrientedBBox({
@@ -22,16 +31,17 @@ class OrientedBBox {
     this.color = const Color(0xff0f52ff),
   });
 
+
+
   // --------------------------
   // Factory: SERVER JSON -> VIEW
   // --------------------------
   /// Detecta: angle_deg (db) o angle_deg_cv (worker); color_hex o color_bgr.
   /// Aplica el mapeo FRAME -> VIEW que le pases.
   factory OrientedBBox.fromServerJson(
-      Map<String, dynamic> j, {
-        required PointMap pFrameToView,
-        required LenMap lenFrameToView,
-      }) {
+    Map<String, dynamic> j, {
+    required FitCoverMapper mapper,
+  }) {
     final id = (j['id'] as num).toInt();
     final cxF = (j['cx'] as num).toDouble();
     final cyF = (j['cy'] as num).toDouble();
@@ -54,9 +64,9 @@ class OrientedBBox {
     }
 
     // FRAME -> VIEW
-    final centerV = pFrameToView(Offset(cxF, cyF));
-    final wV = lenFrameToView(wF);
-    final hV = lenFrameToView(hF);
+    final centerV = mapper.pFrameToView(Offset(cxF, cyF));
+    final wV = mapper.lenFrameToView(wF);
+    final hV = mapper.lenFrameToView(hF);
 
     return OrientedBBox(
       id: id,
@@ -67,6 +77,17 @@ class OrientedBBox {
       color: color,
     );
   }
+
+  /// Asigna coordenadas y angulo para backend
+  void setFrameCoords(FitCoverMapper mapper) {
+    // centro y tamaños en coordenadas de FRAME
+    centerF = mapper.pViewToFrame(center);
+    wF = mapper.lenViewToFrame(w);
+    hF = mapper.lenViewToFrame(h);
+    // tu OrientedBBox usa ángulo en RAD → pásalo a GRADOS para el backend
+    angleDegScreen = angle * 180.0 / math.pi;
+  }
+
 
   // --------------------------
   // Geometría (ya lo tenías)
@@ -128,3 +149,37 @@ class OrientedBBox {
 }
 
 extension _Let<T> on T { R let<R>(R Function(T) f) => f(this); }
+
+extension OrientedBBoxCopy on OrientedBBox {
+  OrientedBBox copyWith({
+    int? id,
+    Offset? center,
+    double? w,
+    double? h,
+    double? angle,
+    Color? color,
+    Offset? centerF,
+    double? wF,
+    double? hF,
+    double? angleDegScreen,
+  }) {
+    final clone = OrientedBBox(
+      id: id ?? this.id,
+      center: center ?? this.center,
+      w: w ?? this.w,
+      h: h ?? this.h,
+      angle: angle ?? this.angle,
+      color: color ?? this.color,
+    );
+
+    // copiar también los campos "late"
+    clone.centerF = centerF ?? this.centerF;
+    clone.wF = wF ?? this.wF;
+    clone.hF = hF ?? this.hF;
+    clone.angleDegScreen = angleDegScreen ?? this.angleDegScreen;
+
+    return clone;
+  }
+}
+
+

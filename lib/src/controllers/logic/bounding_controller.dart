@@ -19,30 +19,17 @@ class BoundingController extends ChangeNotifier {
 
   List<OrientedBBox> initialBBoxes = [];
 
-  Future<void> getBBoxes(Size viewSize, int frameWidth, int frameHeight) async {
-    final mapper = FitCoverMapper(viewSize, frameWidth, frameHeight);
-    initialBBoxes = await boundingModel.getBboxes(pFrameToView: mapper.pFrameToView, lenFrameToView: mapper.lenFrameToView);
-    notifyListeners();
-  }
+  Future<List<OrientedBBox>> getBBoxes(FitCoverMapper mapper) async => await boundingModel.getBboxes(mapper: mapper);
 
   Future<void> sendBBoxOBB(OrientedBBox obb, Size viewSize, int frameWidth, int frameHeight) async {
-    final mapper = FitCoverMapper(viewSize, frameWidth, frameHeight);
-
-    // centro y tamaños en coordenadas de FRAME
-    final centerF = mapper.pViewToFrame(obb.center);
-    final wF = mapper.lenViewToFrame(obb.w);
-    final hF = mapper.lenViewToFrame(obb.h);
-
-    // tu OrientedBBox usa ángulo en RAD → pásalo a GRADOS para el backend
-    final angleDegScreen = obb.angle * 180.0 / math.pi;
 
     CreateBoundingBoxDto dto = CreateBoundingBoxDto(
       id: obb.id,
-      cx: centerF.dx,
-      cy: centerF.dy,
-      w: wF,
-      h: hF,
-      angleDeg: angleDegScreen,
+      cx: obb.centerF.dx,
+      cy: obb.centerF.dy,
+      w: obb.wF,
+      h: obb.hF,
+      angleDeg: obb.angleDegScreen,
       colorHex: ColorUtils.colorToHex(obb.color)
     );
 
@@ -54,23 +41,14 @@ class BoundingController extends ChangeNotifier {
   }
 
   Future<void> updateBBoxById(OrientedBBox obb, Size viewSize, int frameWidth, int frameHeight) async {
-    final mapper = FitCoverMapper(viewSize, frameWidth, frameHeight);
-
-    // centro y tamaños en coordenadas de FRAME
-    final centerF = mapper.pViewToFrame(obb.center);
-    final wF = mapper.lenViewToFrame(obb.w);
-    final hF = mapper.lenViewToFrame(obb.h);
-
-    // tu OrientedBBox usa ángulo en RAD → pásalo a GRADOS para el backend
-    final angleDegScreen = obb.angle * 180.0 / math.pi;
 
     UpdateBoundingBoxDto dto = UpdateBoundingBoxDto(
       id: obb.id,
-      cx: centerF.dx,
-      cy: centerF.dy,
-      w: wF,
-      h: hF,
-      angleDeg: angleDegScreen,
+      cx: obb.centerF.dx,
+      cy: obb.centerF.dy,
+      w: obb.wF,
+      h: obb.hF,
+      angleDeg: obb.angleDegScreen,
       colorHex: ColorUtils.colorToHex(obb.color)
     );
 
