@@ -7,6 +7,7 @@ import 'package:mjpeg_stream/mjpeg_stream.dart';
 import 'bbox_fit_cover_mapper.dart';
 import 'bbox_entity.dart';
 import '../../controllers/logic/camera_controller.dart';
+import 'bbox_helpers.dart';
 import 'bbox_overlay.dart';
 import 'bbox_editor_enums.dart';
 
@@ -21,10 +22,13 @@ class BBoxEditor extends StatefulWidget {
   final VoidCallback? onStreamReady;
   final VoidCallback? onRetry;
 
+  final ToolPolicy policy;
+
   const BBoxEditor({
     super.key,
     required this.stream,
     required this.camResolution,
+    this.policy = ToolPolicy.platformDefault,
     this.controller,
     this.onRetry,
     this.onStreamError,
@@ -49,6 +53,29 @@ class _BBoxEditorState extends State<BBoxEditor> {
     _ctrl.cameraResolution = widget.camResolution;
   }
 
+  BBoxTool get effectiveTool {
+    final p = widget.policy;
+    switch (p) {
+      case ToolPolicy.enforced:
+        return widget.controller!.bBoxTool.value;
+      case ToolPolicy.platformDefault:
+        return isMobileLike ? widget.controller!.bBoxTool.value : BBoxTool.bboxs;
+    }
+  }
+
+  // Flags ya resueltos para que el widget no repita lógica
+  bool get allowZoom {
+    final p = widget.policy;
+    if (isDesktopLike && p != ToolPolicy.enforced) return true;
+    return effectiveTool == BBoxTool.zoom;
+  }
+
+  bool get allowBBoxEdit {
+    final p = widget.policy;
+    if (isDesktopLike && p != ToolPolicy.enforced) return true;
+    return effectiveTool == BBoxTool.bboxs;
+  }
+
   @override
   Widget build(BuildContext context) {
     return AspectRatio(
@@ -58,85 +85,93 @@ class _BBoxEditorState extends State<BBoxEditor> {
           final viewSize = Size(c.maxWidth, c.maxHeight);
           _ctrl.viewSize = viewSize;
 
-          return InteractiveViewer(
-            maxScale: 4,
-            minScale: 1,
-            transformationController: _tc,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                // VIDEO
-                MJPEGStreamScreen(
-                  streamUrl: widget.stream,
-                  borderRadius: 0,
-                  watermarkText: "Issel Code",
-                  width: viewSize.width,
-                  height: viewSize.height,
-                  showLiveIcon: false,
-                  showLogs: false,
-                  blurSensitiveContent: false,
-                  showWatermark: true,
-                  onRetry: () => widget.onRetry?.call(),
-                  onError: () {
-                    cameraStreamError = true;
-                    setState(() {});
-                    widget.onStreamError?.call();
-                  },
-                  onStartCamera: () async {
-                    cameraStreamError = false;
-                    setState(() {});
-                    widget.onStreamReady?.call();
+          return ValueListenableBuilder<BBoxTool>(
+            valueListenable: widget.controller!.bBoxTool,
+            builder: (context, value, child) {
 
-                    // Disparamos la carga de boundings si el padre nos dio el callback
-                    if (widget.onStreamReadyFutureBoundings != null) {
-                      setState(() => _loadingInitial = true);
-                      try {
-                        final list = await widget.onStreamReadyFutureBoundings!(_ctrl.mapper);
-                        _ctrl.setInitialBoxes(list);
-                      } finally {
-                        if (mounted) setState(() => _loadingInitial = false);
-                      }
-                    }
-                  },
-                ),
+              return InteractiveViewer(
+                maxScale: 4,
+                minScale: 1,
+                scaleEnabled: allowZoom,
+                panEnabled: allowZoom,
+                transformationController: _tc,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    // VIDEO
+                    MJPEGStreamScreen(
+                      streamUrl: widget.stream,
+                      borderRadius: 0,
+                      watermarkText: "Issel Code",
+                      width: viewSize.width,
+                      height: viewSize.height,
+                      showLiveIcon: false,
+                      showLogs: false,
+                      blurSensitiveContent: false,
+                      showWatermark: true,
+                      onRetry: () => widget.onRetry?.call(),
+                      onError: () {
+                        cameraStreamError = true;
+                        setState(() {});
+                        widget.onStreamError?.call();
+                      },
+                      onStartCamera: () async {
+                        cameraStreamError = false;
+                        setState(() {});
+                        widget.onStreamReady?.call();
 
-                // OVERLAY
-                if (!cameraStreamError)
-                  ValueListenableBuilder<List<BBoxEntity>>(
-                    valueListenable: _ctrl.boxes,
-                    builder: (context, boxes, _) {
-                      if (_loadingInitial) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-                      return BBoxOverlay(
-                        viewSize: viewSize,
-                        camResolution: widget.camResolution,
-                        // Usa el mismo controller que ya tienes para editar en memoria
-                        controller: widget.controller,
-                        initialBoxes: boxes,
-                        onCommitBox: (box, kind) async {
-                          // delega al padre con el mapper listo
-                          if (widget.onCommitBox != null) {
-                            await widget.onCommitBox!(box, kind);
+                        // Disparamos la carga de boundings si el padre nos dio el callback
+                        if (widget.onStreamReadyFutureBoundings != null) {
+                          setState(() => _loadingInitial = true);
+                          try {
+                            final list = await widget.onStreamReadyFutureBoundings!(_ctrl.mapper);
+                            _ctrl.setInitialBoxes(list);
+                          } finally {
+                            if (mounted) setState(() => _loadingInitial = false);
                           }
-                          // Actualiza el estado local después de persistir
-                          switch (kind) {
-                            case CommitKind.create:
-                              _ctrl.addBox(box);
-                              break;
-                            case CommitKind.update:
-                              _ctrl.updateBox(box);
-                              break;
-                            case CommitKind.delete:
-                              _ctrl.removeBox(box.id);
-                              break;
+                        }
+                      },
+                    ),
+
+                    // OVERLAY
+                    if (!cameraStreamError && allowBBoxEdit)
+                      ValueListenableBuilder<List<BBoxEntity>>(
+                        valueListenable: _ctrl.boxes,
+                        builder: (context, boxes, _) {
+                          if (_loadingInitial) {
+                            return const Center(child: CircularProgressIndicator());
                           }
+                          return BBoxOverlay(
+                            viewSize: viewSize,
+                            camResolution: widget.camResolution,
+                            // Usa el mismo controller que ya tienes para editar en memoria
+                            controller: widget.controller,
+                            initialBoxes: boxes,
+                            onCommitBox: (box, kind) async {
+                              // delega al padre con el mapper listo
+                              if (widget.onCommitBox != null) {
+                                await widget.onCommitBox!(box, kind);
+                              }
+                              // Actualiza el estado local después de persistir
+                              switch (kind) {
+                                case CommitKind.create:
+                                  _ctrl.addBox(box);
+                                  break;
+                                case CommitKind.update:
+                                  _ctrl.updateBox(box);
+                                  break;
+                                case CommitKind.delete:
+                                  _ctrl.removeBox(box.id);
+                                  break;
+                              }
+                            },
+                          );
                         },
-                      );
-                    },
-                  ),
-              ],
-            ),
+                      ),
+                  ],
+                ),
+              );
+            },
           );
         },
       ),

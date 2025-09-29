@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_python_prueba/src/widgets/bbox_editor/bbox_editor_enums.dart';
 import 'bbox_fit_cover_mapper.dart';
 import 'bbox_entity.dart';
+import 'bbox_helpers.dart';
 
 sealed class BBoxEvent { const BBoxEvent(); }
 class BoxCreated extends BBoxEvent { final BBoxEntity box; const BoxCreated(this.box); }
@@ -14,8 +16,11 @@ class BBoxEditorController extends ChangeNotifier {
   late Size _viewSize;
   Size get viewSize => _viewSize;
   set viewSize(Size v) => _viewSize = v;
-
   late Size cameraResolution;
+
+  // Herramienta seleccionada
+  final ValueNotifier<BBoxTool> bBoxTool = ValueNotifier(BBoxTool.bboxs);
+  void setTool(BBoxTool tool) => bBoxTool.value = tool;
 
   FitCoverMapper get mapper {
     assert(_viewSize.width > 0 && _viewSize.height > 0,

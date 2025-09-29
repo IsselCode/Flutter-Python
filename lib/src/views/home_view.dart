@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_python_prueba/core/http/endpoints.dart';
 import 'package:flutter_python_prueba/src/controllers/logic/bounding_controller.dart';
 import 'package:flutter_python_prueba/src/controllers/logic/camera_controller.dart';
 import 'package:flutter_python_prueba/src/widgets/bbox_editor/bbox_editor.dart';
@@ -19,7 +18,7 @@ class _HomeViewState extends State<HomeView> {
 
 
   BBoxEditorController controller = BBoxEditorController();
-  late Future<void> _startCamera;
+  late Future<Size> _startCamera;
 
   @override
   void initState() {
@@ -37,12 +36,14 @@ class _HomeViewState extends State<HomeView> {
     return Scaffold(
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // print(controller.boxes.value);
-          // print(controller.boxes.value.first.color);
-          // int id = controller.boxes.value.first.id;
-          // controller.updateColor(id, Colors.green);
-          controller.clearAll();
+          if (controller.bBoxTool.value == BBoxTool.zoom){
+            controller.setTool(BBoxTool.bboxs);
+          } else {
+            controller.setTool(BBoxTool.zoom);
+          }
+          setState(() {});
         },
+        child: Icon(controller.bBoxTool.value == BBoxTool.zoom ? Icons.zoom_out_map_outlined : Icons.edit_outlined),
       ),
       body: SafeArea(
         child: FutureBuilder(
@@ -52,31 +53,37 @@ class _HomeViewState extends State<HomeView> {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return Center(child: Text("Cargando Camara"),);
             }
+
+            Size size = snapshot.data!;
         
             return BBoxEditor(
               stream: camCtrl.streamCamera(),
               onStreamReadyFutureBoundings: (mapper) => bCtrl.getBBoxes(mapper),
               controller: controller,
-              camResolution: Size(1920, 1080),
+              camResolution: size,
               onCommitBox: (box, kind) async {
                 switch (kind) {
                   case CommitKind.create:
-                    print("Creado");
+                    await bCtrl.sendBBoxOBB(box);
                     break;
                   case CommitKind.update:
-                    print("Actualizado");
+                    await bCtrl.updateBBoxById(box);
                     break;
                   case CommitKind.delete:
-                    print("Eliminado");
+                    await bCtrl.deleteBBoxById(box.id);
                     break;
                 }
               },
-              onStreamReady: () {},
+              onStreamReady: () {
+
+              },
               onRetry: () {
                 CameraController camCtrl = context.read();
                 _startCamera = camCtrl.startCamera();
               },
-              onStreamError: () {},
+              onStreamError: () {
+
+              },
             );
         
           },

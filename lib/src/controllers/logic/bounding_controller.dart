@@ -21,7 +21,7 @@ class BoundingController extends ChangeNotifier {
 
   Future<List<BBoxEntity>> getBBoxes(FitCoverMapper mapper) async => await boundingModel.getBboxes(mapper: mapper);
 
-  Future<void> sendBBoxOBB(BBoxEntity obb, Size viewSize, int frameWidth, int frameHeight) async {
+  Future<void> sendBBoxOBB(BBoxEntity obb) async {
 
     CreateBoundingBoxDto dto = CreateBoundingBoxDto(
       id: obb.id,
@@ -40,7 +40,7 @@ class BoundingController extends ChangeNotifier {
     await boundingModel.deleteBBoxById(id);
   }
 
-  Future<void> updateBBoxById(BBoxEntity obb, Size viewSize, int frameWidth, int frameHeight) async {
+  Future<void> updateBBoxById(BBoxEntity obb) async {
 
     UpdateBoundingBoxDto dto = UpdateBoundingBoxDto(
       id: obb.id,

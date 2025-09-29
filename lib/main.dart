@@ -5,12 +5,10 @@ import 'package:flutter_python_prueba/src/controllers/logic/camera_controller.da
 import 'package:flutter_python_prueba/src/model/bounding_model.dart';
 import 'package:flutter_python_prueba/src/model/camera_model.dart';
 import 'package:flutter_python_prueba/src/views/home_view.dart';
-import 'package:flutter_python_prueba/src/widgets/zoom_test/zoom_test_view.dart';
 import 'package:provider/provider.dart';
 import 'package:snap_layouts/snap_layouts.dart';
 import 'dart:io' show Platform;
 import 'package:window_manager/window_manager.dart';
-import 'core/http/endpoints.dart';
 
 /// flutter_bbox_editor
 void main() async {
