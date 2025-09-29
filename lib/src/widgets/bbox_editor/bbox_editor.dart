@@ -59,7 +59,7 @@ class _BBoxEditorState extends State<BBoxEditor> {
           _ctrl.viewSize = viewSize;
 
           return InteractiveViewer(
-            maxScale: 3,
+            maxScale: 4,
             minScale: 1,
             transformationController: _tc,
             child: Stack(
