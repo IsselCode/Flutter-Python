@@ -72,7 +72,10 @@ class _HomeViewState extends State<HomeView> {
                 }
               },
               onStreamReady: () {},
-              onRetry: () {},
+              onRetry: () {
+                CameraController camCtrl = context.read();
+                _startCamera = camCtrl.startCamera();
+              },
               onStreamError: () {},
             );
         

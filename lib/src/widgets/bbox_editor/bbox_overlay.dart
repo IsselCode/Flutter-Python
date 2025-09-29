@@ -35,9 +35,6 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
   int? _selected;                  // id seleccionado
   Mode _mode = Mode.idle;
   Handle _activeHandle = Handle.none;
-  static const double _minDragDistance = 6.0;
-  Offset? _gestureStart;     // punto donde inició el gesto
-  bool _movedEnough = false; // si ya superó el umbral
 
   // edición
   BBoxEntity? _live;             // copia mientras editas
@@ -124,6 +121,33 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
   }
 
   // --- Gestos ---
+
+  void _onTapDown(TapDownDetails d) {
+    final pos = d.localPosition; // si estás usando matriz de IV, aquí iría _toScene(pos)
+    final hit = _hitTest(pos);
+
+    setState(() {
+      if (hit != null) {
+        // Trae el box al frente y solo selección (sin live ni edición)
+        final idx = _boxes.indexWhere((b) => b.id == hit.id);
+        if (idx != -1) {
+          final box = _boxes.removeAt(idx);
+          _boxes.add(box);          // al frente
+          _selected = box.id;
+        }
+        _live = null;
+        _mode = Mode.idle;
+        _activeHandle = Handle.none;
+      } else {
+        // Clic sobre vacío -> deseleccionar
+        _selected = null;
+        _live = null;
+        _mode = Mode.idle;
+        _activeHandle = Handle.none;
+      }
+    });
+  }
+
   void _onPanStart(DragStartDetails d) {
     final pos = d.localPosition;
     final hit = _hitTest(pos);
@@ -409,6 +433,7 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
       behavior: HitTestBehavior.opaque,
       onPanStart: _onPanStart,
       onPanUpdate: _onPanUpdate,
+      onTapDown: _onTapDown,
       onPanEnd: (_) => _onPanEnd(),
       child: Stack(
         fit: StackFit.expand,

@@ -38,6 +38,7 @@ class BBoxEditor extends StatefulWidget {
 }
 
 class _BBoxEditorState extends State<BBoxEditor> {
+  final _tc = TransformationController();
   bool cameraStreamError = false;
   bool _loadingInitial = false;
   BBoxEditorController get _ctrl => widget.controller ?? (throw ArgumentError('controller es requerido'));
@@ -57,80 +58,85 @@ class _BBoxEditorState extends State<BBoxEditor> {
           final viewSize = Size(c.maxWidth, c.maxHeight);
           _ctrl.viewSize = viewSize;
 
-          return Stack(
-            fit: StackFit.expand,
-            children: [
-              // VIDEO
-              MJPEGStreamScreen(
-                streamUrl: widget.stream,
-                borderRadius: 0,
-                watermarkText: "Issel Code",
-                width: viewSize.width,
-                height: viewSize.height,
-                showLiveIcon: false,
-                showLogs: false,
-                blurSensitiveContent: false,
-                showWatermark: true,
-                onRetry: () => widget.onRetry?.call(),
-                onError: () {
-                  cameraStreamError = true;
-                  setState(() {});
-                  widget.onStreamError?.call();
-                },
-                onStartCamera: () async {
-                  cameraStreamError = false;
-                  setState(() {});
-                  widget.onStreamReady?.call();
+          return InteractiveViewer(
+            maxScale: 3,
+            minScale: 1,
+            transformationController: _tc,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                // VIDEO
+                MJPEGStreamScreen(
+                  streamUrl: widget.stream,
+                  borderRadius: 0,
+                  watermarkText: "Issel Code",
+                  width: viewSize.width,
+                  height: viewSize.height,
+                  showLiveIcon: false,
+                  showLogs: false,
+                  blurSensitiveContent: false,
+                  showWatermark: true,
+                  onRetry: () => widget.onRetry?.call(),
+                  onError: () {
+                    cameraStreamError = true;
+                    setState(() {});
+                    widget.onStreamError?.call();
+                  },
+                  onStartCamera: () async {
+                    cameraStreamError = false;
+                    setState(() {});
+                    widget.onStreamReady?.call();
 
-                  // Disparamos la carga de boundings si el padre nos dio el callback
-                  if (widget.onStreamReadyFutureBoundings != null) {
-                    setState(() => _loadingInitial = true);
-                    try {
-                      final list = await widget.onStreamReadyFutureBoundings!(_ctrl.mapper);
-                      _ctrl.setInitialBoxes(list);
-                    } finally {
-                      if (mounted) setState(() => _loadingInitial = false);
+                    // Disparamos la carga de boundings si el padre nos dio el callback
+                    if (widget.onStreamReadyFutureBoundings != null) {
+                      setState(() => _loadingInitial = true);
+                      try {
+                        final list = await widget.onStreamReadyFutureBoundings!(_ctrl.mapper);
+                        _ctrl.setInitialBoxes(list);
+                      } finally {
+                        if (mounted) setState(() => _loadingInitial = false);
+                      }
                     }
-                  }
-                },
-              ),
-
-              // OVERLAY
-              if (!cameraStreamError)
-                ValueListenableBuilder<List<BBoxEntity>>(
-                  valueListenable: _ctrl.boxes,
-                  builder: (context, boxes, _) {
-                    if (_loadingInitial) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    return BBoxOverlay(
-                      viewSize: viewSize,
-                      camResolution: widget.camResolution,
-                      // Usa el mismo controller que ya tienes para editar en memoria
-                      controller: widget.controller,
-                      initialBoxes: boxes,
-                      onCommitBox: (box, kind) async {
-                        // delega al padre con el mapper listo
-                        if (widget.onCommitBox != null) {
-                          await widget.onCommitBox!(box, kind);
-                        }
-                        // Actualiza el estado local después de persistir
-                        switch (kind) {
-                          case CommitKind.create:
-                            _ctrl.addBox(box);
-                            break;
-                          case CommitKind.update:
-                            _ctrl.updateBox(box);
-                            break;
-                          case CommitKind.delete:
-                            _ctrl.removeBox(box.id);
-                            break;
-                        }
-                      },
-                    );
                   },
                 ),
-            ],
+
+                // OVERLAY
+                if (!cameraStreamError)
+                  ValueListenableBuilder<List<BBoxEntity>>(
+                    valueListenable: _ctrl.boxes,
+                    builder: (context, boxes, _) {
+                      if (_loadingInitial) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      return BBoxOverlay(
+                        viewSize: viewSize,
+                        camResolution: widget.camResolution,
+                        // Usa el mismo controller que ya tienes para editar en memoria
+                        controller: widget.controller,
+                        initialBoxes: boxes,
+                        onCommitBox: (box, kind) async {
+                          // delega al padre con el mapper listo
+                          if (widget.onCommitBox != null) {
+                            await widget.onCommitBox!(box, kind);
+                          }
+                          // Actualiza el estado local después de persistir
+                          switch (kind) {
+                            case CommitKind.create:
+                              _ctrl.addBox(box);
+                              break;
+                            case CommitKind.update:
+                              _ctrl.updateBox(box);
+                              break;
+                            case CommitKind.delete:
+                              _ctrl.removeBox(box.id);
+                              break;
+                          }
+                        },
+                      );
+                    },
+                  ),
+              ],
+            ),
           );
         },
       ),
