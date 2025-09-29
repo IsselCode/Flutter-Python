@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_python_prueba/core/utils/fit_cover_mapper.dart';
+import 'package:flutter_python_prueba/src/widgets/bbox_editor/bbox_fit_cover_mapper.dart';
 import 'package:flutter_python_prueba/src/clean_features/dtos/create_bounding_box_dto.dart';
 import 'package:flutter_python_prueba/src/clean_features/dtos/update_bounding_box_dto.dart';
 

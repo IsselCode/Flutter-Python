@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../../../core/utils/fit_cover_mapper.dart';
+import 'bbox_fit_cover_mapper.dart';
 import 'bbox_entity.dart';
 
 sealed class BBoxEvent { const BBoxEvent(); }

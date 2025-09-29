@@ -3,7 +3,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter_python_prueba/core/utils/fit_cover_mapper.dart';
+import 'package:flutter_python_prueba/src/widgets/bbox_editor/bbox_fit_cover_mapper.dart';
 import 'package:flutter_python_prueba/src/clean_features/dtos/create_bounding_box_dto.dart';
 import 'package:http/http.dart' as http;
 

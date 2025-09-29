@@ -4,7 +4,7 @@ import 'package:flutter_python_prueba/src/widgets/bbox_editor/bbox_editor_contro
 import 'package:provider/provider.dart';
 import 'package:mjpeg_stream/mjpeg_stream.dart';
 
-import '../../../core/utils/fit_cover_mapper.dart';
+import 'bbox_fit_cover_mapper.dart';
 import 'bbox_entity.dart';
 import '../../controllers/logic/camera_controller.dart';
 import 'bbox_overlay.dart';

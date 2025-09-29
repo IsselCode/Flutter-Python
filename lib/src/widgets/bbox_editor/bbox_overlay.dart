@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_python_prueba/src/widgets/bbox_editor/bbox_editor_controller.dart';
-import '../../../core/utils/fit_cover_mapper.dart';
+import 'bbox_fit_cover_mapper.dart';
 import 'bbox_entity.dart';
 import 'bbox_editor_enums.dart';
 
