@@ -9,7 +9,7 @@ import 'package:http/http.dart' as http;
 
 import '../../core/http/endpoints.dart';
 import '../clean_features/dtos/update_bounding_box_dto.dart';
-import '../clean_features/entities/oriented_box_entity.dart';
+import '../widgets/bbox_editor/bbox_entity.dart';
 import '../widgets/bbox_editor/bbox_overlay.dart';
 
 class BoundingModel {
@@ -103,8 +103,8 @@ class BoundingModel {
 
   }
 
-  /// Lee boxes del backend y los convierte a OrientedBBox en VISTA.
-  Future<List<OrientedBBox>> getBboxes({
+  /// Lee boxes del backend y los convierte a BBoxEntity en VISTA.
+  Future<List<BBoxEntity>> getBboxes({
     required FitCoverMapper mapper,
   }) async {
 
@@ -131,7 +131,7 @@ class BoundingModel {
     // Selección de lista
     List<dynamic> raw = (map['items'] as List?) ?? const [];
 
-    return raw.map((e) => OrientedBBox.fromServerJson(e, mapper: mapper),).toList();
+    return raw.map((e) => BBoxEntity.fromServerJson(e, mapper: mapper),).toList();
   }
 
 }

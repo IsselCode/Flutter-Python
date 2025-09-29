@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_python_prueba/src/controllers/logic/bounding_controller.dart';
 import 'package:flutter_python_prueba/src/controllers/logic/camera_controller.dart';
@@ -14,7 +15,7 @@ import 'core/http/endpoints.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  if (Platform.isWindows) {
+  if (!kIsWeb && Platform.isWindows) {
     await windowManager.ensureInitialized();
 
     const windowOptions = WindowOptions(

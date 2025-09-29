@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:mjpeg_stream/mjpeg_stream.dart';
 
 import '../../../core/utils/fit_cover_mapper.dart';
-import '../../clean_features/entities/oriented_box_entity.dart';
+import 'bbox_entity.dart';
 import '../../controllers/logic/camera_controller.dart';
 import 'bbox_overlay.dart';
 import 'bbox_editor_enums.dart';
@@ -14,8 +14,8 @@ class BBoxEditor extends StatefulWidget {
   final String stream;
   final Size camResolution;
   final BBoxEditorController? controller;
-  final Future<List<OrientedBBox>> Function(FitCoverMapper mapper)? onStreamReadyFutureBoundings;
-  final Future<void> Function(OrientedBBox box, CommitKind kind, )? onCommitBox;
+  final Future<List<BBoxEntity>> Function(FitCoverMapper mapper)? onStreamReadyFutureBoundings;
+  final Future<void> Function(BBoxEntity box, CommitKind kind, )? onCommitBox;
 
   final VoidCallback? onStreamError;
   final VoidCallback? onStreamReady;
@@ -97,7 +97,7 @@ class _BBoxEditorState extends State<BBoxEditor> {
 
               // OVERLAY
               if (!cameraStreamError)
-                ValueListenableBuilder<List<OrientedBBox>>(
+                ValueListenableBuilder<List<BBoxEntity>>(
                   valueListenable: _ctrl.boxes,
                   builder: (context, boxes, _) {
                     if (_loadingInitial) {

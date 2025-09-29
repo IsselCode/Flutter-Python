@@ -2,7 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_python_prueba/src/widgets/bbox_editor/bbox_editor_controller.dart';
 import '../../../core/utils/fit_cover_mapper.dart';
-import '../../clean_features/entities/oriented_box_entity.dart';
+import 'bbox_entity.dart';
 import 'bbox_editor_enums.dart';
 
 class BBoxOverlay extends StatefulWidget {
@@ -20,18 +20,18 @@ class BBoxOverlay extends StatefulWidget {
 
   final Size viewSize;
   final Size camResolution;
-  final List<OrientedBBox> initialBoxes;
+  final List<BBoxEntity> initialBoxes;
   final double minW, minH;
   final BBoxEditorController? controller;
-  final Future<void> Function(OrientedBBox box, CommitKind kind)? onCommitBox;
-  final Future<void> Function(List<OrientedBBox> boxes)? onCommitBoxes;
+  final Future<void> Function(BBoxEntity box, CommitKind kind)? onCommitBox;
+  final Future<void> Function(List<BBoxEntity> boxes)? onCommitBoxes;
 
   @override
   State<BBoxOverlay> createState() => _BBoxOverlayState();
 }
 
 class _BBoxOverlayState extends State<BBoxOverlay> {
-  final List<OrientedBBox> _boxes = [];
+  final List<BBoxEntity> _boxes = [];
   int? _selected;                  // id seleccionado
   Mode _mode = Mode.idle;
   Handle _activeHandle = Handle.none;
@@ -40,18 +40,18 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
   bool _movedEnough = false; // si ya superó el umbral
 
   // edición
-  OrientedBBox? _live;             // copia mientras editas
+  BBoxEntity? _live;             // copia mientras editas
   Offset? _drawStart;              // creación
   Offset? _dragDeltaLocal;         // drag
   double? _startVecAngle, _angleStart; // rotate
 
   //
-  OrientedBBox? _editBase;   // ← box “congelado” al iniciar el gesto
+  BBoxEntity? _editBase;   // ← box “congelado” al iniciar el gesto
 
   @override
   void initState() {
     super.initState();
-    _boxes.addAll(widget.initialBoxes.map((b) => OrientedBBox(
+    _boxes.addAll(widget.initialBoxes.map((b) => BBoxEntity(
       id: b.id, center: b.center, w: b.w, h: b.h, angle: b.angle, color: b.color,
     )));
     widget.controller?.attachOverlay(
@@ -60,7 +60,7 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
       add: _addBox,
       setAll: (lst) { _boxes
         ..clear()
-        ..addAll(lst.map((b)=>OrientedBBox(id:b.id,center:b.center,w:b.w,h:b.h,angle:b.angle,color:b.color)));
+        ..addAll(lst.map((b)=>BBoxEntity(id:b.id,center:b.center,w:b.w,h:b.h,angle:b.angle,color:b.color)));
       _selected = null; _endEdit(commit:false);
       },
     );
@@ -77,7 +77,7 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
         add: _addBox,
         setAll: (lst) { _boxes
           ..clear()
-          ..addAll(lst.map((b)=>OrientedBBox(id:b.id,center:b.center,w:b.w,h:b.h,angle:b.angle,color:b.color)));
+          ..addAll(lst.map((b)=>BBoxEntity(id:b.id,center:b.center,w:b.w,h:b.h,angle:b.angle,color:b.color)));
         _selected = null; _endEdit(commit:false);
         },
       );
@@ -93,7 +93,7 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
   // --- API interna para controller ---
   void _clearAll() { setState(() { _boxes.clear(); _selected = null; _cancelEdit(); }); }
   void _removeById(int id) { setState(() { _boxes.removeWhere((b)=>b.id==id); if (_selected==id) _selected=null; _cancelEdit(); }); }
-  void _addBox(OrientedBBox b) { setState(() { _boxes.add(b); _selected = b.id; }); }
+  void _addBox(BBoxEntity b) { setState(() { _boxes.add(b); _selected = b.id; }); }
 
   ({int id, Handle handle, bool rotate, double dist})? _hitTest(Offset pos) {
     const handleR = 16.0;    // para resize
@@ -136,7 +136,7 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
           final box = _boxes.removeAt(idx);
           _boxes.add(box);               // al frente
           _selected = box.id;
-          _live = OrientedBBox(id: box.id, center: box.center, w: box.w, h: box.h, angle: box.angle, color: box.color);
+          _live = BBoxEntity(id: box.id, center: box.center, w: box.w, h: box.h, angle: box.angle, color: box.color);
         });
       }
 
@@ -154,7 +154,7 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
         _activeHandle = hit.handle;
         // congela el box tal como estaba al inicio del gesto
         final b = _boxes.last;
-        _editBase = OrientedBBox(
+        _editBase = BBoxEntity(
           id: b.id, center: b.center, w: b.w, h: b.h, angle: b.angle, color: b.color,
         );
         setState(() {});
@@ -174,7 +174,7 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
     _activeHandle = Handle.none;
     _selected = null;
     _drawStart = pos;
-    _live = OrientedBBox(id: DateTime.now().microsecondsSinceEpoch, center: pos, w: 1, h: 1);
+    _live = BBoxEntity(id: DateTime.now().microsecondsSinceEpoch, center: pos, w: 1, h: 1);
     setState(() {});
   }
 
@@ -186,7 +186,7 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
       case Mode.draw:
         final s = _drawStart!;
         final cx = (s.dx + pos.dx) / 2, cy = (s.dy + pos.dy) / 2;
-        _live = OrientedBBox(id: live.id,
+        _live = BBoxEntity(id: live.id,
           center: Offset(cx, cy),
           w: (pos.dx - s.dx).abs().clamp(widget.minW, double.infinity),
           h: (pos.dy - s.dy).abs().clamp(widget.minH, double.infinity),
@@ -206,7 +206,7 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
           newCenter.dx.clamp(hw, widget.viewSize.width - hw),
           newCenter.dy.clamp(hh, widget.viewSize.height - hh),
         );
-        _live = OrientedBBox(id: live.id, center: newCenter, w: live.w, h: live.h, angle: live.angle, color: b.color);
+        _live = BBoxEntity(id: live.id, center: newCenter, w: live.w, h: live.h, angle: live.angle, color: b.color);
         break;
 
       case Mode.rotate:
@@ -215,7 +215,7 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
         var ang = (_angleStart ?? 0) + (aNow - (_startVecAngle ?? 0));
         if (ang > math.pi) ang -= 2*math.pi;
         if (ang < -math.pi) ang += 2*math.pi;
-        _live = OrientedBBox(id: live.id, center: b.center, w: b.w, h: b.h, angle: ang, color: b.color);
+        _live = BBoxEntity(id: live.id, center: b.center, w: b.w, h: b.h, angle: ang, color: b.color);
         break;
 
       case Mode.resize:
@@ -239,7 +239,7 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
   }
 
   Future<void> _endEdit({required bool commit}) async {
-    OrientedBBox? live = _live;
+    BBoxEntity? live = _live;
 
     if (commit && live != null) {
       final idx = _boxes.indexWhere((b)=>b.id==live.id);
@@ -278,9 +278,9 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
 
 
   // --------- resize (en ejes locales) ---------
-  OrientedBBox _resizeFromHandle(
-      OrientedBBox base,   // caja CONGELADA al panStart (ejes fijos)
-      OrientedBBox cur,    // copia que vamos mostrando
+  BBoxEntity _resizeFromHandle(
+      BBoxEntity base,   // caja CONGELADA al panStart (ejes fijos)
+      BBoxEntity cur,    // copia que vamos mostrando
       Handle h,
       Offset posWorld,
       double minW,
@@ -349,7 +349,7 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
     final newW = (hw * 2).clamp(minW, double.infinity);
     final newH = (hh * 2).clamp(minH, double.infinity);
 
-    return OrientedBBox(
+    return BBoxEntity(
       id: cur.id,
       center: newCenter,
       w: newW,
@@ -361,7 +361,7 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
 
   // --------- HELPERS
 
-  OrientedBBox? get _selectedBox {
+  BBoxEntity? get _selectedBox {
     if (_selected == null) return null;
     final idx = _boxes.indexWhere((b)=>b.id==_selected);
     return idx == -1 ? null : _boxes[idx];
@@ -372,7 +372,7 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
     if (id == null) return;
 
     // guarda copia para enviar delta
-    final removed = _boxes.firstWhere((b)=>b.id==id, orElse: ()=>OrientedBBox(id:id,center:Offset.zero,w:0,h:0));
+    final removed = _boxes.firstWhere((b)=>b.id==id, orElse: ()=>BBoxEntity(id:id,center:Offset.zero,w:0,h:0));
 
     setState(() {
       _boxes.removeWhere((b)=>b.id==id);
@@ -447,9 +447,9 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
 }
 
 class _MultiPainter extends CustomPainter {
-  final List<OrientedBBox> boxes;
+  final List<BBoxEntity> boxes;
   final int? selectedId;
-  final OrientedBBox? live;
+  final BBoxEntity? live;
 
   _MultiPainter({required this.boxes, this.selectedId, this.live});
 
@@ -490,7 +490,7 @@ class _MultiPainter extends CustomPainter {
     }
   }
 
-  Path _obbPath(OrientedBBox b) {
+  Path _obbPath(BBoxEntity b) {
     final p = Path()..addPolygon(b.corners, true);
     return p;
   }

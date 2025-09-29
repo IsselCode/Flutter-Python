@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/utils/fit_cover_mapper.dart';
-import '../../clean_features/entities/oriented_box_entity.dart';
+import 'bbox_entity.dart';
 
 sealed class BBoxEvent { const BBoxEvent(); }
-class BoxCreated extends BBoxEvent { final OrientedBBox box; const BoxCreated(this.box); }
-class BoxUpdated extends BBoxEvent { final OrientedBBox box; const BoxUpdated(this.box); }
+class BoxCreated extends BBoxEvent { final BBoxEntity box; const BoxCreated(this.box); }
+class BoxUpdated extends BBoxEvent { final BBoxEntity box; const BoxUpdated(this.box); }
 class BoxDeleted extends BBoxEvent { final int id; const BoxDeleted(this.id); }
 class BoxesCleared extends BBoxEvent { const BoxesCleared(); }
 
@@ -26,7 +26,7 @@ class BBoxEditorController extends ChangeNotifier {
   }
 
   // --- Estado reactivo de boxes
-  final ValueNotifier<List<OrientedBBox>> boxes = ValueNotifier(const []);
+  final ValueNotifier<List<BBoxEntity>> boxes = ValueNotifier(const []);
 
   // --- Eventos (opcional si te sirven)
   final _events = StreamController<BBoxEvent>.broadcast();
@@ -35,15 +35,15 @@ class BBoxEditorController extends ChangeNotifier {
   // --- Hooks que antes vivían en MultiBBoxOverlayController
   VoidCallback? _ovClearAll;
   void Function(int id)? _ovRemove;
-  void Function(OrientedBBox box)? _ovAdd;
-  void Function(List<OrientedBBox> boxes)? _ovSetAll;
+  void Function(BBoxEntity box)? _ovAdd;
+  void Function(List<BBoxEntity> boxes)? _ovSetAll;
 
   /// Llamado por el overlay en su initState
   void attachOverlay({
     required VoidCallback clearAll,
     required void Function(int id) remove,
-    required void Function(OrientedBBox box) add,
-    required void Function(List<OrientedBBox> boxes) setAll,
+    required void Function(BBoxEntity box) add,
+    required void Function(List<BBoxEntity> boxes) setAll,
   }) {
     _ovClearAll = clearAll;
     _ovRemove = remove;
@@ -61,7 +61,7 @@ class BBoxEditorController extends ChangeNotifier {
 
   // --- API externa para el padre/negocio y también usada por el overlay
 
-  void setInitialBoxes(List<OrientedBBox> list) {
+  void setInitialBoxes(List<BBoxEntity> list) {
     boxes.value = List.unmodifiable(list);
     _ovSetAll?.call(list); // notifica al overlay para sincronizar su buffer interno si tiene
     // (No emito evento aquí para evitar ruido si no lo necesitas)
@@ -73,13 +73,13 @@ class BBoxEditorController extends ChangeNotifier {
     _events.add(const BoxesCleared());
   }
 
-  void addBox(OrientedBBox b) {
+  void addBox(BBoxEntity b) {
     boxes.value = [...boxes.value, b];
     _ovAdd?.call(b);
     _events.add(BoxCreated(b));
   }
 
-  void updateBox(OrientedBBox b) {
+  void updateBox(BBoxEntity b) {
     final i = boxes.value.indexWhere((e) => e.id == b.id);
     if (i >= 0) {
       final l = [...boxes.value]..[i] = b;
@@ -97,7 +97,7 @@ class BBoxEditorController extends ChangeNotifier {
   }
 
   /// Helper genérico para modificar un box por id (p. ej. cambiar color, ángulo, etc.)
-  void patchBox(int id, OrientedBBox Function(OrientedBBox old) updater) {
+  void patchBox(int id, BBoxEntity Function(BBoxEntity old) updater) {
     final i = boxes.value.indexWhere((e) => e.id == id);
     if (i < 0) return;
     final old = boxes.value[i];

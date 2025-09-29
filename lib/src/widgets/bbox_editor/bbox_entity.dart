@@ -3,13 +3,14 @@ import 'dart:ui';
 
 import 'package:flutter_python_prueba/core/utils/fit_cover_mapper.dart';
 
-import '../../widgets/bbox_editor/bbox_editor_enums.dart';
-import '../../widgets/bbox_editor/bbox_overlay.dart';
+import 'bbox_editor_enums.dart';
+import 'bbox_overlay.dart';
 
+extension _Let<T> on T { R let<R>(R Function(T) f) => f(this); }
 typedef PointMap = Offset Function(Offset);
 typedef LenMap = double Function(double);
 
-class OrientedBBox {
+class BBoxEntity {
   final int id;
   Offset center;  // en VISTA
   double w, h;    // en VISTA
@@ -22,7 +23,7 @@ class OrientedBBox {
 
   Color color;
 
-  OrientedBBox({
+  BBoxEntity({
     required this.id,
     required this.center,
     required this.w,
@@ -38,7 +39,7 @@ class OrientedBBox {
   // --------------------------
   /// Detecta: angle_deg (db) o angle_deg_cv (worker); color_hex o color_bgr.
   /// Aplica el mapeo FRAME -> VIEW que le pases.
-  factory OrientedBBox.fromServerJson(
+  factory BBoxEntity.fromServerJson(
     Map<String, dynamic> j, {
     required FitCoverMapper mapper,
   }) {
@@ -68,7 +69,7 @@ class OrientedBBox {
     final wV = mapper.lenFrameToView(wF);
     final hV = mapper.lenFrameToView(hF);
 
-    return OrientedBBox(
+    return BBoxEntity(
       id: id,
       center: centerV,
       w: wV,
@@ -84,7 +85,7 @@ class OrientedBBox {
     centerF = mapper.pViewToFrame(center);
     wF = mapper.lenViewToFrame(w);
     hF = mapper.lenViewToFrame(h);
-    // tu OrientedBBox usa ángulo en RAD → pásalo a GRADOS para el backend
+    // tu BBoxEntity usa ángulo en RAD → pásalo a GRADOS para el backend
     angleDegScreen = angle * 180.0 / math.pi;
   }
 
@@ -148,10 +149,8 @@ class OrientedBBox {
   }
 }
 
-extension _Let<T> on T { R let<R>(R Function(T) f) => f(this); }
-
-extension OrientedBBoxCopy on OrientedBBox {
-  OrientedBBox copyWith({
+extension BBoxCopy on BBoxEntity {
+  BBoxEntity copyWith({
     int? id,
     Offset? center,
     double? w,
@@ -163,7 +162,7 @@ extension OrientedBBoxCopy on OrientedBBox {
     double? hF,
     double? angleDegScreen,
   }) {
-    final clone = OrientedBBox(
+    final clone = BBoxEntity(
       id: id ?? this.id,
       center: center ?? this.center,
       w: w ?? this.w,
