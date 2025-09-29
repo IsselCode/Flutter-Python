@@ -42,6 +42,7 @@ class BBoxEditorController extends ChangeNotifier {
   void Function(int id)? _ovRemove;
   void Function(BBoxEntity box)? _ovAdd;
   void Function(List<BBoxEntity> boxes)? _ovSetAll;
+  void Function(int id, BBoxEntity box)? _ovUpdate;
 
   /// Llamado por el overlay en su initState
   void attachOverlay({
@@ -49,11 +50,13 @@ class BBoxEditorController extends ChangeNotifier {
     required void Function(int id) remove,
     required void Function(BBoxEntity box) add,
     required void Function(List<BBoxEntity> boxes) setAll,
+    required void Function(int id, BBoxEntity box) update,
   }) {
     _ovClearAll = clearAll;
     _ovRemove = remove;
     _ovAdd = add;
     _ovSetAll = setAll;
+    _ovUpdate = update;
   }
 
   /// Llamado por el overlay en su dispose
@@ -62,6 +65,7 @@ class BBoxEditorController extends ChangeNotifier {
     _ovRemove = null;
     _ovAdd = null;
     _ovSetAll = null;
+    _ovUpdate = null;
   }
 
   // --- API externa para el padre/negocio y también usada por el overlay
@@ -78,43 +82,27 @@ class BBoxEditorController extends ChangeNotifier {
     _events.add(const BoxesCleared());
   }
 
-  void addBox(BBoxEntity b) {
+  Future<void> addBox(BBoxEntity b) async  {
     boxes.value = [...boxes.value, b];
     _ovAdd?.call(b);
     _events.add(BoxCreated(b));
   }
 
-  void updateBox(BBoxEntity b) {
-    final i = boxes.value.indexWhere((e) => e.id == b.id);
-    if (i >= 0) {
-      final l = [...boxes.value]..[i] = b;
-      boxes.value = l;
-      _events.add(BoxUpdated(b));
-    }
-    // El overlay se actualiza vía ValueListenableBuilder,
-    // por lo que no es necesario llamar a un hook aquí.
-  }
-
-  void removeBox(int id) {
+  Future<void> removeBox(int id) async {
     boxes.value = boxes.value.where((e) => e.id != id).toList(growable: false);
     _ovRemove?.call(id);
     _events.add(BoxDeleted(id));
   }
 
-  /// Helper genérico para modificar un box por id (p. ej. cambiar color, ángulo, etc.)
-  void patchBox(int id, BBoxEntity Function(BBoxEntity old) updater) {
+  Future<void> updateBox(int id, BBoxEntity b) async {
     final i = boxes.value.indexWhere((e) => e.id == id);
     if (i < 0) return;
     final old = boxes.value[i];
-    final updated = updater(old);
+    final updated = b;
     final l = [...boxes.value]..[i] = updated;
     boxes.value = l;
-    _events.add(BoxUpdated(updated));
-  }
-
-  /// Caso común: actualizar color y redibujar
-  void updateColor(int id, Color color) {
-    patchBox(id, (old) => old.copyWith(color: color));
+    _ovUpdate?.call(b.id, b);
+    _events.add(BoxUpdated(b));
   }
 
   @override

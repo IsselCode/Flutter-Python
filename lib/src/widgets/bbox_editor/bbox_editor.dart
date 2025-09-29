@@ -23,6 +23,7 @@ class BBoxEditor extends StatefulWidget {
   final VoidCallback? onRetry;
 
   final ToolPolicy policy;
+  final bool logs;
 
   const BBoxEditor({
     super.key,
@@ -35,6 +36,7 @@ class BBoxEditor extends StatefulWidget {
     this.onStreamReady,
     this.onStreamReadyFutureBoundings,
     this.onCommitBox,
+    this.logs = true
   });
 
   @override
@@ -145,25 +147,11 @@ class _BBoxEditorState extends State<BBoxEditor> {
                             viewSize: viewSize,
                             camResolution: widget.camResolution,
                             // Usa el mismo controller que ya tienes para editar en memoria
-                            controller: widget.controller,
+                            controller: widget.controller!,
                             initialBoxes: boxes,
                             onCommitBox: (box, kind) async {
-                              // delega al padre con el mapper listo
-                              if (widget.onCommitBox != null) {
-                                await widget.onCommitBox!(box, kind);
-                              }
-                              // Actualiza el estado local después de persistir
-                              switch (kind) {
-                                case CommitKind.create:
-                                  _ctrl.addBox(box);
-                                  break;
-                                case CommitKind.update:
-                                  _ctrl.updateBox(box);
-                                  break;
-                                case CommitKind.delete:
-                                  _ctrl.removeBox(box.id);
-                                  break;
-                              }
+                              if (widget.logs) print(kind.name);
+                              await widget.onCommitBox?.call(box, kind);
                             },
                           );
                         },

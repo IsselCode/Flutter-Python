@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_python_prueba/core/utils/random_hex_color.dart';
 import 'package:flutter_python_prueba/src/controllers/logic/bounding_controller.dart';
 import 'package:flutter_python_prueba/src/controllers/logic/camera_controller.dart';
 import 'package:flutter_python_prueba/src/widgets/bbox_editor/bbox_editor.dart';
 import 'package:flutter_python_prueba/src/widgets/bbox_editor/bbox_editor_controller.dart';
+import 'package:flutter_python_prueba/src/widgets/bbox_editor/bbox_entity.dart';
 import 'package:provider/provider.dart';
 
 import '../widgets/bbox_editor/bbox_editor_enums.dart';
@@ -35,7 +37,7 @@ class _HomeViewState extends State<HomeView> {
 
     return Scaffold(
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
+        onPressed: () async {
           if (controller.bBoxTool.value == BBoxTool.zoom){
             controller.setTool(BBoxTool.bboxs);
           } else {

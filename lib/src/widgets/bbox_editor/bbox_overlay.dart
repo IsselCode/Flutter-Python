@@ -12,7 +12,7 @@ class BBoxOverlay extends StatefulWidget {
     required this.camResolution,
     this.onCommitBox, // (box, kind)
     this.onCommitBoxes,                    // se llama al soltar gesto
-    this.controller,
+    required this.controller,
     this.initialBoxes = const [],
     this.minW = 20,
     this.minH = 20,
@@ -22,7 +22,7 @@ class BBoxOverlay extends StatefulWidget {
   final Size camResolution;
   final List<BBoxEntity> initialBoxes;
   final double minW, minH;
-  final BBoxEditorController? controller;
+  final BBoxEditorController controller;
   final Future<void> Function(BBoxEntity box, CommitKind kind)? onCommitBox;
   final Future<void> Function(List<BBoxEntity> boxes)? onCommitBoxes;
 
@@ -55,6 +55,7 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
       clearAll: _clearAll,
       remove: _removeById,
       add: _addBox,
+      update: _updateBox,
       setAll: (lst) { _boxes
         ..clear()
         ..addAll(lst.map((b)=>BBoxEntity(id:b.id,center:b.center,w:b.w,h:b.h,angle:b.angle,color:b.color)));
@@ -72,6 +73,7 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
         clearAll: _clearAll,
         remove: _removeById,
         add: _addBox,
+        update: _updateBox,
         setAll: (lst) { _boxes
           ..clear()
           ..addAll(lst.map((b)=>BBoxEntity(id:b.id,center:b.center,w:b.w,h:b.h,angle:b.angle,color:b.color)));
@@ -88,9 +90,44 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
   }
 
   // --- API interna para controller ---
-  void _clearAll() { setState(() { _boxes.clear(); _selected = null; _cancelEdit(); }); }
-  void _removeById(int id) { setState(() { _boxes.removeWhere((b)=>b.id==id); if (_selected==id) _selected=null; _cancelEdit(); }); }
-  void _addBox(BBoxEntity b) { setState(() { _boxes.add(b); _selected = b.id; }); }
+  Future<void> _clearAll() async { setState(() { _boxes.clear(); _selected = null; _cancelEdit(); }); }
+  Future<void> _removeById(int id) async {
+    // guarda copia para enviar delta
+    final removed = _boxes.firstWhere((b)=>b.id==id, orElse: ()=>BBoxEntity(id:id,center:Offset.zero,w:0,h:0));
+
+    setState(() {
+      _boxes.removeWhere((b)=>b.id==id);
+      if (_selected==id) _selected=null;
+      _cancelEdit();
+    });
+
+    // Enviar commit al padre cuando la actualización viene del controller
+    await widget.onCommitBox?.call(removed, CommitKind.delete);
+    await widget.onCommitBoxes?.call(List.unmodifiable(_boxes));
+  }
+  Future<void> _addBox(BBoxEntity b) async {
+    setState(() {
+      final mapper = FitCoverMapper(widget.viewSize, widget.camResolution);
+      b.setFrameCoords(mapper);
+      _boxes.add(b);
+      _selected = b.id;
+    });
+      // Enviar commit al padre cuando la actualización viene del controller
+      await widget.onCommitBox?.call(b, CommitKind.create);
+      await widget.onCommitBoxes?.call(List.unmodifiable(_boxes));
+    }
+  Future<void> _updateBox(int id, BBoxEntity box) async {
+    setState(() {
+      final mapper = FitCoverMapper(widget.viewSize, widget.camResolution);
+      box.setFrameCoords(mapper);
+      int ibbox = _boxes.indexWhere((element) => element.id == box.id,);
+      _boxes[ibbox] = box;
+    });
+
+    // Evita re-entradas durante el setState
+    await widget.onCommitBox?.call(box, CommitKind.update);
+    await widget.onCommitBoxes?.call(List.unmodifiable(_boxes));
+  }
 
   ({int id, Handle handle, bool rotate, double dist})? _hitTest(Offset pos) {
     const handleR = 16.0;    // para resize
@@ -121,7 +158,6 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
   }
 
   // --- Gestos ---
-
   void _onTapDown(TapDownDetails d) {
     final pos = d.localPosition; // si estás usando matriz de IV, aquí iría _toScene(pos)
     final hit = _hitTest(pos);
@@ -269,33 +305,12 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
       final idx = _boxes.indexWhere((b)=>b.id==live.id);
       final isCreate = idx == -1;
 
-      final mapper = FitCoverMapper(widget.viewSize, widget.camResolution);
-      live.setFrameCoords(mapper);
-
       if (isCreate) {
-        // ← NUEVO: evitar crear si solo fue clic (sin arrastre)
-        final clickedOnly = (live.w <= 5.0 && live.h <= 5.0);
-        if (clickedOnly) {
-          setState(() { _cancelEdit(); });
-          return;
-        }
-
-        if (widget.onCommitBox != null) {
-          await widget.onCommitBox!(live, CommitKind.create);
-        }
+        widget.controller.addBox(live);
       } else {
         _boxes[idx] = live;
-        if (widget.onCommitBox != null) {
-          await widget.onCommitBox!(live, CommitKind.update);
-        }
+        widget.controller.updateBox(live.id, live);
       }
-
-      // (opcional) full sync si alguien lo escucha
-      if (widget.onCommitBoxes != null) {
-        await widget.onCommitBoxes!(List.unmodifiable(_boxes));
-      }
-
-      setState(() {});
     }
     _cancelEdit();
   }
@@ -394,25 +409,7 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
   Future<void> _deleteSelected() async {
     final id = _selected;
     if (id == null) return;
-
-    // guarda copia para enviar delta
-    final removed = _boxes.firstWhere((b)=>b.id==id, orElse: ()=>BBoxEntity(id:id,center:Offset.zero,w:0,h:0));
-
-    setState(() {
-      _boxes.removeWhere((b)=>b.id==id);
-      _selected = null;
-      _cancelEdit();
-    });
-
-    // 🔸 delta
-    if (widget.onCommitBox != null) {
-      await widget.onCommitBox!(removed, CommitKind.delete);
-    }
-
-    // (opcional) full sync
-    if (widget.onCommitBoxes != null) {
-      await widget.onCommitBoxes!(List.unmodifiable(_boxes));
-    }
+    widget.controller.removeBox(id);
   }
 
   @override
