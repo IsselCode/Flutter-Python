@@ -39,18 +39,18 @@ class BBoxEditorController extends ChangeNotifier {
 
   // --- Hooks que antes vivían en MultiBBoxOverlayController
   VoidCallback? _ovClearAll;
-  void Function(int id)? _ovRemove;
-  void Function(BBoxEntity box)? _ovAdd;
+  void Function(int id, CommitOrigin commitOrigin)? _ovRemove;
+  void Function(BBoxEntity box, CommitOrigin commitOrigin)? _ovAdd;
   void Function(List<BBoxEntity> boxes)? _ovSetAll;
-  void Function(int id, BBoxEntity box)? _ovUpdate;
+  void Function(int id, BBoxEntity box, CommitOrigin commitOrigin)? _ovUpdate;
 
   /// Llamado por el overlay en su initState
   void attachOverlay({
     required VoidCallback clearAll,
-    required void Function(int id) remove,
-    required void Function(BBoxEntity box) add,
+    required void Function(int id, CommitOrigin commitOrigin) remove,
+    required void Function(BBoxEntity box, CommitOrigin commitOrigin) add,
     required void Function(List<BBoxEntity> boxes) setAll,
-    required void Function(int id, BBoxEntity box) update,
+    required void Function(int id, BBoxEntity box, CommitOrigin commitOrigin) update,
   }) {
     _ovClearAll = clearAll;
     _ovRemove = remove;
@@ -82,26 +82,26 @@ class BBoxEditorController extends ChangeNotifier {
     _events.add(const BoxesCleared());
   }
 
-  Future<void> addBox(BBoxEntity b) async  {
+  Future<void> addBox(BBoxEntity b, {CommitOrigin commitOrigin = CommitOrigin.controller}) async  {
     boxes.value = [...boxes.value, b];
-    _ovAdd?.call(b);
+    _ovAdd?.call(b, commitOrigin);
     _events.add(BoxCreated(b));
   }
 
-  Future<void> removeBox(int id) async {
+  Future<void> removeBox(int id, {CommitOrigin commitOrigin = CommitOrigin.controller}) async {
     boxes.value = boxes.value.where((e) => e.id != id).toList(growable: false);
-    _ovRemove?.call(id);
+    _ovRemove?.call(id, commitOrigin);
     _events.add(BoxDeleted(id));
   }
 
-  Future<void> updateBox(int id, BBoxEntity b) async {
+  Future<void> updateBox(int id, BBoxEntity b, {CommitOrigin commitOrigin = CommitOrigin.controller}) async {
     final i = boxes.value.indexWhere((e) => e.id == id);
     if (i < 0) return;
     final old = boxes.value[i];
     final updated = b;
     final l = [...boxes.value]..[i] = updated;
     boxes.value = l;
-    _ovUpdate?.call(b.id, b);
+    _ovUpdate?.call(b.id, b, commitOrigin);
     _events.add(BoxUpdated(b));
   }
 

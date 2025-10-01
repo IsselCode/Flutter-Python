@@ -23,7 +23,7 @@ class BBoxOverlay extends StatefulWidget {
   final List<BBoxEntity> initialBoxes;
   final double minW, minH;
   final BBoxEditorController controller;
-  final Future<void> Function(BBoxEntity box, CommitKind kind)? onCommitBox;
+  final Future<void> Function(BBoxEntity box, CommitKind kind, CommitOrigin commitOrigin)? onCommitBox;
   final Future<void> Function(List<BBoxEntity> boxes)? onCommitBoxes;
 
   @override
@@ -91,7 +91,7 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
 
   // --- API interna para controller ---
   Future<void> _clearAll() async { setState(() { _boxes.clear(); _selected = null; _cancelEdit(); }); }
-  Future<void> _removeById(int id) async {
+  Future<void> _removeById(int id, CommitOrigin commitOrigin) async {
     // guarda copia para enviar delta
     final removed = _boxes.firstWhere((b)=>b.id==id, orElse: ()=>BBoxEntity(id:id,center:Offset.zero,w:0,h:0));
 
@@ -102,10 +102,10 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
     });
 
     // Enviar commit al padre cuando la actualización viene del controller
-    await widget.onCommitBox?.call(removed, CommitKind.delete);
+    await widget.onCommitBox?.call(removed, CommitKind.delete, commitOrigin);
     await widget.onCommitBoxes?.call(List.unmodifiable(_boxes));
   }
-  Future<void> _addBox(BBoxEntity b) async {
+  Future<void> _addBox(BBoxEntity b, CommitOrigin commitOrigin) async {
     setState(() {
       final mapper = FitCoverMapper(widget.viewSize, widget.camResolution);
       b.setFrameCoords(mapper);
@@ -113,10 +113,10 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
       _selected = b.id;
     });
       // Enviar commit al padre cuando la actualización viene del controller
-      await widget.onCommitBox?.call(b, CommitKind.create);
+      await widget.onCommitBox?.call(b, CommitKind.create, commitOrigin);
       await widget.onCommitBoxes?.call(List.unmodifiable(_boxes));
     }
-  Future<void> _updateBox(int id, BBoxEntity box) async {
+  Future<void> _updateBox(int id, BBoxEntity box, CommitOrigin commitOrigin) async {
     setState(() {
       final mapper = FitCoverMapper(widget.viewSize, widget.camResolution);
       box.setFrameCoords(mapper);
@@ -125,7 +125,7 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
     });
 
     // Evita re-entradas durante el setState
-    await widget.onCommitBox?.call(box, CommitKind.update);
+    await widget.onCommitBox?.call(box, CommitKind.update, commitOrigin);
     await widget.onCommitBoxes?.call(List.unmodifiable(_boxes));
   }
 
@@ -306,10 +306,10 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
       final isCreate = idx == -1;
 
       if (isCreate) {
-        widget.controller.addBox(live);
+        widget.controller.addBox(live, commitOrigin: CommitOrigin.overlay);
       } else {
         _boxes[idx] = live;
-        widget.controller.updateBox(live.id, live);
+        widget.controller.updateBox(live.id, live, commitOrigin: CommitOrigin.overlay);
       }
     }
     _cancelEdit();
@@ -409,7 +409,7 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
   Future<void> _deleteSelected() async {
     final id = _selected;
     if (id == null) return;
-    widget.controller.removeBox(id);
+    widget.controller.removeBox(id, commitOrigin: CommitOrigin.overlay);
   }
 
   @override

@@ -63,7 +63,7 @@ class _HomeViewState extends State<HomeView> {
               onStreamReadyFutureBoundings: (mapper) => bCtrl.getBBoxes(mapper),
               controller: controller,
               camResolution: size,
-              onCommitBox: (box, kind) async {
+              onCommitBox: (box, kind, commitOrigin) async {
                 switch (kind) {
                   case CommitKind.create:
                     await bCtrl.sendBBoxOBB(box);

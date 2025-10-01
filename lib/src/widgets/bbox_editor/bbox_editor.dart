@@ -16,7 +16,7 @@ class BBoxEditor extends StatefulWidget {
   final Size camResolution;
   final BBoxEditorController? controller;
   final Future<List<BBoxEntity>> Function(FitCoverMapper mapper)? onStreamReadyFutureBoundings;
-  final Future<void> Function(BBoxEntity box, CommitKind kind, )? onCommitBox;
+  final Future<void> Function(BBoxEntity box, CommitKind kind, CommitOrigin commitOrigin)? onCommitBox;
 
   final VoidCallback? onStreamError;
   final VoidCallback? onStreamReady;
@@ -149,9 +149,9 @@ class _BBoxEditorState extends State<BBoxEditor> {
                             // Usa el mismo controller que ya tienes para editar en memoria
                             controller: widget.controller!,
                             initialBoxes: boxes,
-                            onCommitBox: (box, kind) async {
-                              if (widget.logs) print(kind.name);
-                              await widget.onCommitBox?.call(box, kind);
+                            onCommitBox: (box, kind, commitOrigin) async {
+                              if (widget.logs) print("${kind.name}, ${commitOrigin.name}, ${box.toString()}");
+                              await widget.onCommitBox?.call(box, kind, commitOrigin);
                             },
                           );
                         },
