@@ -3,6 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  nsd_windows
   screen_retriever_windows
   snap_layouts
   window_manager

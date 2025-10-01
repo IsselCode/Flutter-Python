@@ -39,6 +39,11 @@ dependencies:
   provider: ^6.1.5+1
   window_manager: ^0.5.1
   snap_layouts: ^0.2.0
+  animated_counter_x: ^0.0.1
+  google_fonts: ^6.3.2
+  nsd: ^4.0.3
+  get_it: ^8.2.0
+  toastification: ^3.0.3
 
 dev_dependencies:
   flutter_test:
