@@ -134,8 +134,8 @@ class _RightPanel extends StatelessWidget {
                     child: ListTile(
                       tileColor: colorScheme.surface,
                       leading: const Icon(Icons.devices),
-                      title: Text(d.host),
-                      subtitle: Text("${d.name}${d.port}"),
+                      title: Text(d.name),
+                      subtitle: Text("${d.host}${d.port}"),
                       onTap: () => setDevice(context, d),
                     ),
                   );
