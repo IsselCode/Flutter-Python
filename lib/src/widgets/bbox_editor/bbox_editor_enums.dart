@@ -1,6 +1,6 @@
 enum Mode { idle, draw, drag, rotate, resize }
 enum Handle { none, tl, t, tr, r, br, b, bl, l }
-enum CommitKind { create, update, delete }
+enum CommitKind { create, update, delete, selected, unselected}
 enum BBoxTool {zoom, bboxs}
 enum ToolPolicy { platformDefault, enforced}
 enum CommitOrigin {controller, overlay}

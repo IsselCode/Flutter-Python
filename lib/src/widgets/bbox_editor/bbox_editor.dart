@@ -16,7 +16,7 @@ class BBoxEditor extends StatefulWidget {
   final Size camResolution;
   final BBoxEditorController? controller;
   final Future<List<BBoxEntity>> Function(FitCoverMapper mapper)? onStreamReadyFutureBoundings;
-  final Future<void> Function(BBoxEntity box, CommitKind kind, CommitOrigin commitOrigin)? onCommitBox;
+  final Future<void> Function(BBoxEntity? box, CommitKind kind, CommitOrigin commitOrigin)? onCommitBox;
 
   final VoidCallback? onStreamError;
   final VoidCallback? onStreamReady;

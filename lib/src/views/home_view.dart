@@ -66,14 +66,16 @@ class _HomeViewState extends State<HomeView> {
               onCommitBox: (box, kind, commitOrigin) async {
                 switch (kind) {
                   case CommitKind.create:
-                    await bCtrl.sendBBoxOBB(box);
+                    await bCtrl.sendBBoxOBB(box!);
                     break;
                   case CommitKind.update:
-                    await bCtrl.updateBBoxById(box);
+                    await bCtrl.updateBBoxById(box!);
                     break;
                   case CommitKind.delete:
-                    await bCtrl.deleteBBoxById(box.id);
+                    await bCtrl.deleteBBoxById(box!.id);
                     break;
+                  case CommitKind.selected:
+                  case CommitKind.unselected:
                 }
               },
               onStreamReady: () {

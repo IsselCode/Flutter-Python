@@ -23,7 +23,7 @@ class BBoxOverlay extends StatefulWidget {
   final List<BBoxEntity> initialBoxes;
   final double minW, minH;
   final BBoxEditorController controller;
-  final Future<void> Function(BBoxEntity box, CommitKind kind, CommitOrigin commitOrigin)? onCommitBox;
+  final Future<void> Function(BBoxEntity? box, CommitKind kind, CommitOrigin commitOrigin)? onCommitBox;
   final Future<void> Function(List<BBoxEntity> boxes)? onCommitBoxes;
 
   @override
@@ -158,30 +158,36 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
   }
 
   // --- Gestos ---
-  void _onTapDown(TapDownDetails d) {
+  void _onTapDown(TapDownDetails d) async {
     final pos = d.localPosition; // si estás usando matriz de IV, aquí iría _toScene(pos)
     final hit = _hitTest(pos);
 
-    setState(() {
-      if (hit != null) {
-        // Trae el box al frente y solo selección (sin live ni edición)
-        final idx = _boxes.indexWhere((b) => b.id == hit.id);
-        if (idx != -1) {
-          final box = _boxes.removeAt(idx);
-          _boxes.add(box);          // al frente
-          _selected = box.id;
-        }
-        _live = null;
-        _mode = Mode.idle;
-        _activeHandle = Handle.none;
-      } else {
-        // Clic sobre vacío -> deseleccionar
-        _selected = null;
-        _live = null;
-        _mode = Mode.idle;
-        _activeHandle = Handle.none;
+    if (hit != null) {
+      // Trae el box al frente y solo selección (sin live ni edición)
+      final idx = _boxes.indexWhere((b) => b.id == hit.id);
+      if (idx != -1) {
+        final box = _boxes.removeAt(idx);
+        _boxes.add(box);          // al frente
+        //TODO: Asignar nuevo acceso a la API para seleccionar Elemento desde controlador
+        //TODO: y enviar commits correctamente
+        await widget.onCommitBox?.call(box, CommitKind.selected, CommitOrigin.overlay);
+        _selected = box.id;
       }
-    });
+      _live = null;
+      _mode = Mode.idle;
+      _activeHandle = Handle.none;
+    } else {
+      // Clic sobre vacío -> deseleccionar
+      _selected = null;
+      _live = null;
+      _mode = Mode.idle;
+      _activeHandle = Handle.none;
+      //TODO: Asignar nuevo acceso a la API para seleccionar Elemento desde controlador
+      //TODO: y enviar commits correctamente
+      await widget.onCommitBox?.call(null, CommitKind.unselected, CommitOrigin.overlay);
+    }
+
+    setState(() {});
   }
 
   void _onPanStart(DragStartDetails d) {

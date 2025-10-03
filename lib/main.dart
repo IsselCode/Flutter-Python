@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_python_prueba/core/app/theme.dart';
 import 'package:flutter_python_prueba/core/services/navigation_service.dart';
 import 'package:flutter_python_prueba/src/controllers/logic/bounding_controller.dart';
@@ -20,6 +21,7 @@ import 'inject_container.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   await injectContainer();
 
   if (!kIsWeb && Platform.isWindows) {
@@ -74,7 +76,7 @@ class MyApp extends StatelessWidget {
             ],
           );
         },
-        home: ScanDevicesView(),
+        home: HomeView(),
       ),
     );
   }
