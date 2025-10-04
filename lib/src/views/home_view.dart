@@ -4,6 +4,7 @@ import 'package:flutter_python_prueba/src/controllers/logic/bounding_controller.
 import 'package:flutter_python_prueba/src/controllers/logic/camera_controller.dart';
 import 'package:flutter_python_prueba/src/widgets/bbox_editor/bbox_editor.dart';
 import 'package:flutter_python_prueba/src/widgets/bbox_editor/bbox_editor_controller.dart';
+import 'package:flutter_python_prueba/src/widgets/bbox_editor/bbox_editor_events.dart';
 import 'package:flutter_python_prueba/src/widgets/bbox_editor/bbox_entity.dart';
 import 'package:provider/provider.dart';
 
@@ -27,6 +28,14 @@ class _HomeViewState extends State<HomeView> {
     super.initState();
     CameraController camCtrl = context.read();
     _startCamera = camCtrl.startCamera();
+    controller.events.listen((event) {
+      switch (event) {
+        case BoxCreated():
+        case BoxUpdated():
+        case BoxDeleted():
+        case BoxesCleared():
+      }
+    },);
   }
 
 
@@ -63,20 +72,22 @@ class _HomeViewState extends State<HomeView> {
               onStreamReadyFutureBoundings: (mapper) => bCtrl.getBBoxes(mapper),
               controller: controller,
               camResolution: size,
-              onCommitBox: (box, kind, commitOrigin) async {
-                switch (kind) {
-                  case CommitKind.create:
-                    await bCtrl.sendBBoxOBB(box!);
+              onCommitBox: (event) async {
+                switch (event) {
+                  case BoxCreated():
+                    await bCtrl.sendBBoxOBB(event.box);
                     break;
-                  case CommitKind.update:
-                    await bCtrl.updateBBoxById(box!);
+                  case BoxUpdated():
+                    await bCtrl.updateBBoxById(event.box);
                     break;
-                  case CommitKind.delete:
-                    await bCtrl.deleteBBoxById(box!.id);
+                  case BoxDeleted():
+                    await bCtrl.deleteBBoxById(event.id);
                     break;
-                  case CommitKind.selected:
-                  case CommitKind.unselected:
+                  default:
+                    break;
                 }
+                  // case CommitKind.selected:
+                  // case CommitKind.unselected:
               },
               onStreamReady: () {
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_python_prueba/src/controllers/logic/bounding_controller.dart';
 import 'package:flutter_python_prueba/src/widgets/bbox_editor/bbox_editor_controller.dart';
+import 'package:flutter_python_prueba/src/widgets/bbox_editor/bbox_editor_events.dart';
 import 'package:provider/provider.dart';
 import 'package:mjpeg_stream/mjpeg_stream.dart';
 
@@ -16,7 +17,7 @@ class BBoxEditor extends StatefulWidget {
   final Size camResolution;
   final BBoxEditorController? controller;
   final Future<List<BBoxEntity>> Function(FitCoverMapper mapper)? onStreamReadyFutureBoundings;
-  final Future<void> Function(BBoxEntity? box, CommitKind kind, CommitOrigin commitOrigin)? onCommitBox;
+  final void Function(BBoxEvent event)? onCommitBox;
 
   final VoidCallback? onStreamError;
   final VoidCallback? onStreamReady;
@@ -149,9 +150,9 @@ class _BBoxEditorState extends State<BBoxEditor> {
                             // Usa el mismo controller que ya tienes para editar en memoria
                             controller: widget.controller!,
                             initialBoxes: boxes,
-                            onCommitBox: (box, kind, commitOrigin) async {
-                              if (widget.logs) print("${kind.name}, ${commitOrigin.name}, ${box.toString()}");
-                              await widget.onCommitBox?.call(box, kind, commitOrigin);
+                            onCommitBox: (event) {
+                              if (widget.logs) print(event.toString());
+                              widget.onCommitBox?.call(event);
                             },
                           );
                         },

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_python_prueba/src/widgets/bbox_editor/bbox_editor_controller.dart';
+import 'package:flutter_python_prueba/src/widgets/bbox_editor/bbox_editor_events.dart';
 import 'bbox_fit_cover_mapper.dart';
 import 'bbox_entity.dart';
 import 'bbox_editor_enums.dart';
@@ -11,7 +12,6 @@ class BBoxOverlay extends StatefulWidget {
     required this.viewSize,                         // tamaño del área del video (VISTA)
     required this.camResolution,
     this.onCommitBox, // (box, kind)
-    this.onCommitBoxes,                    // se llama al soltar gesto
     required this.controller,
     this.initialBoxes = const [],
     this.minW = 20,
@@ -23,8 +23,7 @@ class BBoxOverlay extends StatefulWidget {
   final List<BBoxEntity> initialBoxes;
   final double minW, minH;
   final BBoxEditorController controller;
-  final Future<void> Function(BBoxEntity? box, CommitKind kind, CommitOrigin commitOrigin)? onCommitBox;
-  final Future<void> Function(List<BBoxEntity> boxes)? onCommitBoxes;
+  final void Function(BBoxEvent event)? onCommitBox;
 
   @override
   State<BBoxOverlay> createState() => _BBoxOverlayState();
@@ -93,6 +92,7 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
   Future<void> _clearAll() async { setState(() { _boxes.clear(); _selected = null; _cancelEdit(); }); }
   Future<void> _removeById(int id, CommitOrigin commitOrigin) async {
     // guarda copia para enviar delta
+    // (Por si se requiere actualización)
     final removed = _boxes.firstWhere((b)=>b.id==id, orElse: ()=>BBoxEntity(id:id,center:Offset.zero,w:0,h:0));
 
     setState(() {
@@ -102,8 +102,7 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
     });
 
     // Enviar commit al padre cuando la actualización viene del controller
-    await widget.onCommitBox?.call(removed, CommitKind.delete, commitOrigin);
-    await widget.onCommitBoxes?.call(List.unmodifiable(_boxes));
+      widget.onCommitBox?.call(BoxDeleted(id: id, origin: commitOrigin));
   }
   Future<void> _addBox(BBoxEntity b, CommitOrigin commitOrigin) async {
     setState(() {
@@ -113,8 +112,7 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
       _selected = b.id;
     });
       // Enviar commit al padre cuando la actualización viene del controller
-      await widget.onCommitBox?.call(b, CommitKind.create, commitOrigin);
-      await widget.onCommitBoxes?.call(List.unmodifiable(_boxes));
+      widget.onCommitBox?.call(BoxCreated(box: b, origin: commitOrigin));
     }
   Future<void> _updateBox(int id, BBoxEntity box, CommitOrigin commitOrigin) async {
     setState(() {
@@ -124,9 +122,8 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
       _boxes[ibbox] = box;
     });
 
-    // Evita re-entradas durante el setState
-    await widget.onCommitBox?.call(box, CommitKind.update, commitOrigin);
-    await widget.onCommitBoxes?.call(List.unmodifiable(_boxes));
+    // Se envia el commit
+    widget.onCommitBox?.call(BoxUpdated(box: box, origin: commitOrigin));
   }
 
   ({int id, Handle handle, bool rotate, double dist})? _hitTest(Offset pos) {
@@ -170,7 +167,7 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
         _boxes.add(box);          // al frente
         //TODO: Asignar nuevo acceso a la API para seleccionar Elemento desde controlador
         //TODO: y enviar commits correctamente
-        await widget.onCommitBox?.call(box, CommitKind.selected, CommitOrigin.overlay);
+        // await widget.onCommitBox?.call(box, CommitKind.selected, CommitOrigin.overlay);
         _selected = box.id;
       }
       _live = null;
@@ -184,7 +181,7 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
       _activeHandle = Handle.none;
       //TODO: Asignar nuevo acceso a la API para seleccionar Elemento desde controlador
       //TODO: y enviar commits correctamente
-      await widget.onCommitBox?.call(null, CommitKind.unselected, CommitOrigin.overlay);
+      // await widget.onCommitBox?.call(null, CommitKind.unselected, CommitOrigin.overlay);
     }
 
     setState(() {});

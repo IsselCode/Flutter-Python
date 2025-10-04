@@ -1,15 +1,24 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_python_prueba/src/widgets/bbox_editor/bbox_editor_enums.dart';
+import 'bbox_editor_events.dart';
 import 'bbox_fit_cover_mapper.dart';
 import 'bbox_entity.dart';
 import 'bbox_helpers.dart';
 
-sealed class BBoxEvent { const BBoxEvent(); }
-class BoxCreated extends BBoxEvent { final BBoxEntity box; const BoxCreated(this.box); }
-class BoxUpdated extends BBoxEvent { final BBoxEntity box; const BoxUpdated(this.box); }
-class BoxDeleted extends BBoxEvent { final int id; const BoxDeleted(this.id); }
-class BoxesCleared extends BBoxEvent { const BoxesCleared(); }
+// class BBoxEvent {
+//
+//   BBoxEntity? box;
+//   CommitKind commitKind;
+//   CommitOrigin commitOrigin;
+//
+//   BBoxEvent({
+//     required this.commitKind,
+//     required this.commitOrigin,
+//     this.box,
+//   });
+//
+// }
 
 class BBoxEditorController extends ChangeNotifier {
   // --- Tamaños y mapper
@@ -79,19 +88,19 @@ class BBoxEditorController extends ChangeNotifier {
   void clearAll() {
     boxes.value = const [];
     _ovClearAll?.call();
-    _events.add(const BoxesCleared());
+    _events.add(const BoxesCleared(origin: CommitOrigin.controller));
   }
 
   Future<void> addBox(BBoxEntity b, {CommitOrigin commitOrigin = CommitOrigin.controller}) async  {
     boxes.value = [...boxes.value, b];
     _ovAdd?.call(b, commitOrigin);
-    _events.add(BoxCreated(b));
+    _events.add(BoxCreated(box: b, origin: commitOrigin));
   }
 
   Future<void> removeBox(int id, {CommitOrigin commitOrigin = CommitOrigin.controller}) async {
     boxes.value = boxes.value.where((e) => e.id != id).toList(growable: false);
     _ovRemove?.call(id, commitOrigin);
-    _events.add(BoxDeleted(id));
+    _events.add(BoxDeleted(id: id, origin: commitOrigin));
   }
 
   Future<void> updateBox(int id, BBoxEntity b, {CommitOrigin commitOrigin = CommitOrigin.controller}) async {
@@ -102,7 +111,7 @@ class BBoxEditorController extends ChangeNotifier {
     final l = [...boxes.value]..[i] = updated;
     boxes.value = l;
     _ovUpdate?.call(b.id, b, commitOrigin);
-    _events.add(BoxUpdated(b));
+    _events.add(BoxUpdated(box: b, origin: commitOrigin));
   }
 
   @override
