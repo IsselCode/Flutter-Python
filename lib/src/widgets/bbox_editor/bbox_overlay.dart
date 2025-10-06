@@ -55,6 +55,7 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
       remove: _removeById,
       add: _addBox,
       update: _updateBox,
+      selected: _selectedMethod,
       setAll: (lst) { _boxes
         ..clear()
         ..addAll(lst.map((b)=>BBoxEntity(id:b.id,center:b.center,w:b.w,h:b.h,angle:b.angle,color:b.color)));
@@ -73,6 +74,7 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
         remove: _removeById,
         add: _addBox,
         update: _updateBox,
+        selected: _selectedMethod,
         setAll: (lst) { _boxes
           ..clear()
           ..addAll(lst.map((b)=>BBoxEntity(id:b.id,center:b.center,w:b.w,h:b.h,angle:b.angle,color:b.color)));
@@ -125,6 +127,31 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
     // Se envia el commit
     widget.onCommitBox?.call(BoxUpdated(box: box, origin: commitOrigin));
   }
+  Future<void> _selectedMethod(int? id, CommitOrigin commitOrigin) async {
+
+    if (id != null ){
+
+      // Trae el box al frente y solo selección (sin live ni edición)
+      final idx = _boxes.indexWhere((b) => b.id == id);
+      if (idx != -1) {
+        final box = _boxes.removeAt(idx);
+        _boxes.add(box);
+        widget.onCommitBox?.call(BoxSelected(origin: commitOrigin, box: box));
+        _selected = box.id;
+      }
+      _live = null;
+      _mode = Mode.idle;
+      _activeHandle = Handle.none;
+
+    } else {
+      _selected = null;
+      _live = null;
+      _mode = Mode.idle;
+      _activeHandle = Handle.none;
+      widget.onCommitBox?.call(BoxSelected(origin: commitOrigin));
+    }
+    setState(() {});
+  }
 
   ({int id, Handle handle, bool rotate, double dist})? _hitTest(Offset pos) {
     const handleR = 16.0;    // para resize
@@ -160,31 +187,10 @@ class _BBoxOverlayState extends State<BBoxOverlay> {
     final hit = _hitTest(pos);
 
     if (hit != null) {
-      // Trae el box al frente y solo selección (sin live ni edición)
-      final idx = _boxes.indexWhere((b) => b.id == hit.id);
-      if (idx != -1) {
-        final box = _boxes.removeAt(idx);
-        _boxes.add(box);          // al frente
-        //TODO: Asignar nuevo acceso a la API para seleccionar Elemento desde controlador
-        //TODO: y enviar commits correctamente
-        // await widget.onCommitBox?.call(box, CommitKind.selected, CommitOrigin.overlay);
-        _selected = box.id;
-      }
-      _live = null;
-      _mode = Mode.idle;
-      _activeHandle = Handle.none;
+      widget.controller.setSelectedBox(hit.id, commitOrigin: CommitOrigin.overlay);
     } else {
-      // Clic sobre vacío -> deseleccionar
-      _selected = null;
-      _live = null;
-      _mode = Mode.idle;
-      _activeHandle = Handle.none;
-      //TODO: Asignar nuevo acceso a la API para seleccionar Elemento desde controlador
-      //TODO: y enviar commits correctamente
-      // await widget.onCommitBox?.call(null, CommitKind.unselected, CommitOrigin.overlay);
+      widget.controller.setSelectedBox(null, commitOrigin: CommitOrigin.overlay);
     }
-
-    setState(() {});
   }
 
   void _onPanStart(DragStartDetails d) {

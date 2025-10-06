@@ -22,4 +22,9 @@ class BoxDeleted extends BBoxEvent {
   const BoxDeleted({required this.id, required super.origin});
 }
 
+class BoxSelected extends BBoxEvent {
+  final BBoxEntity? box;
+  const BoxSelected({this.box, required super.origin});
+}
+
 class BoxesCleared extends BBoxEvent { const BoxesCleared({required super.origin}); }

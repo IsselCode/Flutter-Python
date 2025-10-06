@@ -34,6 +34,7 @@ class _HomeViewState extends State<HomeView> {
         case BoxUpdated():
         case BoxDeleted():
         case BoxesCleared():
+        case BoxSelected():
       }
     },);
   }
@@ -83,6 +84,7 @@ class _HomeViewState extends State<HomeView> {
                   case BoxDeleted():
                     await bCtrl.deleteBBoxById(event.id);
                     break;
+                  case BoxSelected():
                   default:
                     break;
                 }

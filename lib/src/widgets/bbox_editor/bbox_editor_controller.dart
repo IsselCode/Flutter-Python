@@ -52,6 +52,7 @@ class BBoxEditorController extends ChangeNotifier {
   void Function(BBoxEntity box, CommitOrigin commitOrigin)? _ovAdd;
   void Function(List<BBoxEntity> boxes)? _ovSetAll;
   void Function(int id, BBoxEntity box, CommitOrigin commitOrigin)? _ovUpdate;
+  void Function(int? id, CommitOrigin commitOrigin)? _ovSelected;
 
   /// Llamado por el overlay en su initState
   void attachOverlay({
@@ -60,12 +61,14 @@ class BBoxEditorController extends ChangeNotifier {
     required void Function(BBoxEntity box, CommitOrigin commitOrigin) add,
     required void Function(List<BBoxEntity> boxes) setAll,
     required void Function(int id, BBoxEntity box, CommitOrigin commitOrigin) update,
+    required void Function(int? id, CommitOrigin commitOrigin) selected
   }) {
     _ovClearAll = clearAll;
     _ovRemove = remove;
     _ovAdd = add;
     _ovSetAll = setAll;
     _ovUpdate = update;
+    _ovSelected = selected;
   }
 
   /// Llamado por el overlay en su dispose
@@ -75,6 +78,7 @@ class BBoxEditorController extends ChangeNotifier {
     _ovAdd = null;
     _ovSetAll = null;
     _ovUpdate = null;
+    _ovSelected = null;
   }
 
   // --- API externa para el padre/negocio y también usada por el overlay
@@ -92,6 +96,22 @@ class BBoxEditorController extends ChangeNotifier {
   }
 
   Future<void> addBox(BBoxEntity b, {CommitOrigin commitOrigin = CommitOrigin.controller}) async  {
+    boxes.value = [...boxes.value, b];
+    _ovAdd?.call(b, commitOrigin);
+    _events.add(BoxCreated(box: b, origin: commitOrigin));
+  }
+
+  BBoxEntity? selectedBox;
+  Future<void> setSelectedBox(int? id, {CommitOrigin commitOrigin = CommitOrigin.controller}) async {
+    if (id != null ){
+      selectedBox = boxes.value.singleWhere((element) => element.id == id);
+    } else {
+      selectedBox = null;
+    }
+    _ovSelected?.call(id, commitOrigin);
+  }
+
+  Future<void> selected(BBoxEntity b, {CommitOrigin commitOrigin = CommitOrigin.controller}) async  {
     boxes.value = [...boxes.value, b];
     _ovAdd?.call(b, commitOrigin);
     _events.add(BoxCreated(box: b, origin: commitOrigin));
